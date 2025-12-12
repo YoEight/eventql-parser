@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 thiserror = "2"
+nom = "8"
+nom_locate = "5"

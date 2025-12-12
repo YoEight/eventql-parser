@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use nom_locate::LocatedSpan;
+
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub enum Sym {
     Id,
@@ -7,6 +9,7 @@ pub enum Sym {
     Float,
     Keyword,
     Operator,
+    Symbol,
     Eof,
 }
 
@@ -18,26 +21,23 @@ impl Display for Sym {
             Sym::Float => write!(f, "float"),
             Sym::Keyword => write!(f, "keyword"),
             Sym::Operator => write!(f, "operator"),
+            Sym::Symbol => write!(f, "symbol"),
             Sym::Eof => write!(f, "<eof>"),
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Pos {
-    pub line: u64,
-    pub col: u64,
-}
+pub type Pos<'a> = LocatedSpan<&'a str>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Token<'a> {
     pub sym: Sym,
-    pub pos: Pos,
+    pub pos: Pos<'a>,
     pub value: &'a str,
 }
 
 impl<'a> Token<'a> {
-    pub fn new(sym: Sym, pos: Pos, value: &'a str) -> Self {
+    pub fn new(sym: Sym, pos: Pos<'a>, value: &'a str) -> Self {
         Self { sym, pos, value }
     }
 }
