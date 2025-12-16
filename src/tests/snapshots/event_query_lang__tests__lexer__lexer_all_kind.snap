@@ -1,0 +1,39 @@
+---
+source: src/tests/lexer.rs
+expression: tokens
+---
+- sym:
+    Id: foo
+  line: 1
+  col: 1
+- sym:
+    Operator: Neq
+  line: 1
+  col: 5
+- sym:
+    Float: 123
+  line: 1
+  col: 8
+- sym:
+    Symbol: OpenBrace
+  line: 1
+  col: 11
+- sym:
+    Symbol: CloseBracket
+  line: 1
+  col: 12
+- sym:
+    Symbol: OpenBrace
+  line: 1
+  col: 13
+- sym:
+    Symbol: Dot
+  line: 1
+  col: 14
+- sym:
+    Symbol: Colon
+  line: 1
+  col: 15
+- sym: Eof
+  line: 1
+  col: 16

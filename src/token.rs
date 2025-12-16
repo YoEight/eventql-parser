@@ -1,6 +1,7 @@
 use nom_locate::LocatedSpan;
+use serde::Serialize;
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Serialize)]
 pub enum Sym<'a> {
     Id(&'a str),
     Integer(i64),
@@ -11,7 +12,7 @@ pub enum Sym<'a> {
     Eof,
 }
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Serialize)]
 pub enum Operator {
     Add,
     Sub,
@@ -25,7 +26,7 @@ pub enum Operator {
     Gte,
 }
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Serialize)]
 pub enum Symbol {
     OpenParen,
     CloseParen,
@@ -52,9 +53,9 @@ pub enum Symbol {
 //     }
 // // }
 
-pub type Pos<'a> = LocatedSpan<&'a str>;
+pub type Text<'a> = LocatedSpan<&'a str>;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct Token<'a> {
     pub sym: Sym<'a>,
     pub line: u32,

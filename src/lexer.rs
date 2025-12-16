@@ -1,31 +1,49 @@
-use crate::token::{Operator, Pos, Sym, Symbol, Token};
+use crate::token::{Operator, Sym, Symbol, Text, Token};
 use nom::branch::alt;
 use nom::character::complete::{alpha1, alphanumeric0, char, multispace0};
 use nom::character::{digit1, one_of};
 use nom::combinator::{fail, map, opt, recognize};
-use nom::error::{Error, context};
+use nom::error::{context, Error};
 use nom::number::double;
 use nom::sequence::{delimited, pair};
-use nom::{IResult, Parser, combinator};
+use nom::{combinator, IResult, Parser};
 
-fn parse_token<'a>() -> impl Parser<Pos<'a>, Output = Token<'a>> {
-    delimited(multispace0, token, multispace0)
+pub fn parse_tokens(input: &str) -> Result<Vec<Token<'_>>, nom::Err<Error<Text<'_>>>> {
+    let mut input = Text::new(input);
+    let mut tokens = Vec::new();
+
+    loop {
+        let (remaining, token) = token(input)?;
+        tokens.push(token);
+
+        if matches!(token.sym, Sym::Eof) {
+            break;
+        }
+
+        input = remaining;
+    }
+
+    Ok(tokens)
 }
 
-fn token(input: Pos) -> IResult<Pos, Token> {
-    alt((
-        eof,
-        symbol,
-        operator,
-        ident,
-        number,
-        context("invalid character", fail()),
-    ))
+fn token(input: Text) -> IResult<Text, Token> {
+    delimited(
+        multispace0,
+        alt((
+            eof,
+            symbol,
+            operator,
+            ident,
+            number,
+            context("invalid character", fail()),
+        )),
+        multispace0,
+    )
     .parse(input)
 }
 
-fn eof(input: Pos) -> IResult<Pos, Token> {
-    (combinator::eof::<_, Error<Pos>>)
+fn eof(input: Text) -> IResult<Text, Token> {
+    (combinator::eof::<_, Error<Text>>)
         .map(|pos| Token {
             sym: Sym::Eof,
             line: pos.location_line(),
@@ -34,7 +52,7 @@ fn eof(input: Pos) -> IResult<Pos, Token> {
         .parse(input)
 }
 
-fn symbol(input: Pos) -> IResult<Pos, Token> {
+fn symbol(input: Text) -> IResult<Text, Token> {
     one_of("().,:[]{}")
         .map(|c| match c {
             '(' => Symbol::OpenBrace,
@@ -56,11 +74,11 @@ fn symbol(input: Pos) -> IResult<Pos, Token> {
         .parse(input)
 }
 
-fn operator(input: Pos) -> IResult<Pos, Token> {
+fn operator(input: Text) -> IResult<Text, Token> {
     alt((operator_1, operator_2)).parse(input)
 }
 
-fn operator_1(input: Pos) -> IResult<Pos, Token> {
+fn operator_1(input: Text) -> IResult<Text, Token> {
     one_of("+-*/=^")
         .map(|c| match c {
             '+' => Operator::Add,
@@ -78,7 +96,7 @@ fn operator_1(input: Pos) -> IResult<Pos, Token> {
         .parse(input)
 }
 
-fn operator_2(input: Pos) -> IResult<Pos, Token> {
+fn operator_2(input: Text) -> IResult<Text, Token> {
     one_of("<>!")
         .flat_map(|c| {
             context(
@@ -101,9 +119,9 @@ fn operator_2(input: Pos) -> IResult<Pos, Token> {
         .parse(input)
 }
 
-fn ident(input: Pos) -> IResult<Pos, Token> {
+fn ident(input: Text) -> IResult<Text, Token> {
     recognize(pair(alpha1, alphanumeric0))
-        .map(|value: Pos| Token {
+        .map(|value: Text| Token {
             sym: Sym::Id(value.fragment()),
             line: value.location_line(),
             col: value.get_column() as u32,
@@ -111,10 +129,10 @@ fn ident(input: Pos) -> IResult<Pos, Token> {
         .parse(input)
 }
 
-fn number(input: Pos) -> IResult<Pos, Token> {
+fn number(input: Text) -> IResult<Text, Token> {
     alt((
         map(double(), |value| Sym::Float(value)),
-        map(digit1(), |value: Pos| {
+        map(digit1(), |value: Text| {
             Sym::Integer(value.fragment().parse().unwrap())
         }),
     ))

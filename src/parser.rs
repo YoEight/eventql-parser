@@ -5,5 +5,5 @@ use nom::{
     combinator::{eof, map, opt, peek},
 };
 
-use crate::token::{Pos, Sym, Token};
+use crate::token::{Text, Sym, Token};
 
