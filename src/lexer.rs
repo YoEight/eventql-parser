@@ -2,7 +2,7 @@ use crate::token::{Operator, Sym, Symbol, Text, Token};
 use nom::branch::alt;
 use nom::character::complete::{alpha1, alphanumeric0, char, multispace0};
 use nom::character::one_of;
-use nom::combinator::{fail, opt, recognize};
+use nom::combinator::{eof, fail, opt, recognize};
 use nom::error::{context, Error};
 use nom::number::complete::double;
 use nom::sequence::{delimited, pair};
@@ -13,17 +13,8 @@ pub fn parse_tokens(input: &str) -> Result<Vec<Token<'_>>, nom::Err<Error<Text<'
     let mut tokens = Vec::new();
 
     loop {
-        let token = if input.fragment().is_empty() {
-            Token {
-                sym: Sym::Eof,
-                line: input.location_line(),
-                col: input.get_column() as u32,
-            }
-        } else {
-            let (remaining, token) = token(input)?;
-            input = remaining;
-            token
-        };
+        let (remaining, token) = token(input)?;
+        input = remaining;
 
         tokens.push(token);
 
@@ -39,6 +30,7 @@ fn token(input: Text) -> IResult<Text, Token> {
     delimited(
         multispace0,
         alt((
+            end_of_file,
             symbol,
             operator,
             ident,
@@ -70,6 +62,15 @@ fn symbol(input: Text) -> IResult<Text, Token> {
             col: input.get_column() as u32,
         })
         .parse(input)
+}
+
+fn end_of_file(input: Text) -> IResult<Text, Token> {
+    eof.map(|_| Token {
+        sym: Sym::Eof,
+        line: input.location_line(),
+        col: input.get_column() as u32,
+    })
+    .parse(input)
 }
 
 fn operator(input: Text) -> IResult<Text, Token> {
