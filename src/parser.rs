@@ -1,5 +1,5 @@
 use crate::ast::{
-    App, Attrs, Binary, Expr, Order, OrderBy, Query, Source, SourceKind, Unary, Value,
+    App, Attrs, Binary, Expr, Limit, Order, OrderBy, Query, Source, SourceKind, Unary, Value,
 };
 use crate::error::ParserError;
 use crate::token::{Operator, Sym, Symbol, Token};
@@ -98,6 +98,27 @@ impl<'a> Parser<'a> {
             };
 
             return Ok(OrderBy { expr, order });
+        }
+
+        Err(ParserError::UnexpectedToken(token))
+    }
+
+    fn parse_limit<'b>(&'b mut self) -> ParseResult<'a, Limit> {
+        let token = self.shift();
+        let limit = expect_keyword(token, "top")
+            .map(|_| "top")
+            .or_else(|_| expect_keyword(token, "skip").map(|_| "skip"))
+            .map_err(|_| ParserError::UnexpectedToken(token))?;
+
+        let token = self.shift();
+        if let Sym::Number(value) = token.sym
+            && value.fract() == 0.0
+        {
+            return match limit {
+                "top" => Ok(Limit::Top(value as u64)),
+                "skip" => Ok(Limit::Skip(value as u64)),
+                _ => unreachable!(),
+            };
         }
 
         Err(ParserError::UnexpectedToken(token))
@@ -267,6 +288,19 @@ impl<'a> Parser<'a> {
             None
         };
 
+        let limit = if let Sym::Id(name) = self.peek().sym
+            && (name.eq_ignore_ascii_case("skip") || name.eq_ignore_ascii_case("top"))
+        {
+            Some(self.parse_limit()?)
+        } else {
+            None
+        };
+
+        expect_keyword(self.shift(), "project")?;
+        expect_keyword(self.shift(), "into")?;
+
+        let projection = self.parse_expr()?;
+
         self.scope -= 1;
 
         Ok(Query {
@@ -275,8 +309,8 @@ impl<'a> Parser<'a> {
             predicate,
             group_by,
             order_by,
-            limit: todo!(),
-            projection: todo!(),
+            limit,
+            projection,
         })
     }
 }
