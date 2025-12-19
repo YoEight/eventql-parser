@@ -1,4 +1,6 @@
-use crate::ast::{App, Attrs, Binary, Expr, Query, Source, SourceKind, Unary, Value};
+use crate::ast::{
+    App, Attrs, Binary, Expr, Order, OrderBy, Query, Source, SourceKind, Unary, Value,
+};
 use crate::error::ParserError;
 use crate::token::{Operator, Sym, Symbol, Token};
 
@@ -15,7 +17,7 @@ impl<'a> Parser<'a> {
         Self {
             input,
             offset: 0,
-            scope: 1,
+            scope: 0,
         }
     }
 
@@ -67,9 +69,38 @@ impl<'a> Parser<'a> {
         Ok(Source { binding, kind })
     }
 
-    fn parse_where_clause<'b>(&mut self) -> ParseResult<'a, Expr<'a>> {
+    fn parse_where_clause<'b>(&'b mut self) -> ParseResult<'a, Expr<'a>> {
         expect_keyword(self.shift(), "where")?;
         self.parse_expr()
+    }
+
+    fn parse_group_by<'b>(&'b mut self) -> ParseResult<'a, Expr<'a>> {
+        expect_keyword(self.shift(), "group")?;
+        expect_keyword(self.shift(), "by")?;
+
+        self.parse_expr()
+    }
+
+    fn parse_order_by<'b>(&'b mut self) -> ParseResult<'a, OrderBy<'a>> {
+        expect_keyword(self.shift(), "order")?;
+        expect_keyword(self.shift(), "by")?;
+
+        let expr = self.parse_expr()?;
+        let token = self.shift();
+
+        if let Sym::Id(name) = token.sym {
+            let order = if name.eq_ignore_ascii_case("asc") {
+                Order::Asc
+            } else if name.eq_ignore_ascii_case("desc") {
+                Order::Desc
+            } else {
+                return Err(ParserError::UnexpectedToken(token));
+            };
+
+            return Ok(OrderBy { expr, order });
+        }
+
+        Err(ParserError::UnexpectedToken(token))
     }
 
     fn parse_expr<'b>(&'b mut self) -> ParseResult<'a, Expr<'a>> {
@@ -204,6 +235,7 @@ impl<'a> Parser<'a> {
     fn parse_query<'b>(&'b mut self) -> ParseResult<'a, Query<'a>> {
         self.scope += 1;
         let mut sources = vec![];
+        let pos = self.peek().into();
 
         while let Sym::Id(name) = self.peek().sym
             && name.eq_ignore_ascii_case("from")
@@ -211,14 +243,41 @@ impl<'a> Parser<'a> {
             sources.push(self.parse_source()?);
         }
 
-        if let Sym::Id(name) = self.peek().sym
+        let predicate = if let Sym::Id(name) = self.peek().sym
             && name.eq_ignore_ascii_case("where")
         {
-            self.parse_where_clause()?;
-        }
+            Some(self.parse_where_clause()?)
+        } else {
+            None
+        };
+
+        let group_by = if let Sym::Id(name) = self.peek().sym
+            && name.eq_ignore_ascii_case("group")
+        {
+            Some(self.parse_group_by()?)
+        } else {
+            None
+        };
+
+        let order_by = if let Sym::Id(name) = self.peek().sym
+            && name.eq_ignore_ascii_case("order")
+        {
+            Some(self.parse_order_by()?)
+        } else {
+            None
+        };
 
         self.scope -= 1;
-        todo!()
+
+        Ok(Query {
+            attrs: Attrs::new(pos, self.scope),
+            sources,
+            predicate,
+            group_by,
+            order_by,
+            limit: todo!(),
+            projection: todo!(),
+        })
     }
 }
 

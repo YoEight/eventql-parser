@@ -110,7 +110,7 @@ pub enum SourceKind<'a> {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Sort<'a> {
+pub struct OrderBy<'a> {
     pub expr: Expr<'a>,
     pub order: Order,
 }
@@ -133,7 +133,7 @@ pub struct Query<'a> {
     pub sources: Vec<Source<'a>>,
     pub predicate: Option<Expr<'a>>,
     pub group_by: Option<Expr<'a>>,
-    pub sort: Option<Sort<'a>>,
+    pub order_by: Option<OrderBy<'a>>,
     pub limit: Option<Limit>,
     pub projection: Expr<'a>,
 }
