@@ -1,5 +1,6 @@
 use crate::ast::{
-    App, Attrs, Binary, Expr, Limit, Order, OrderBy, Query, Source, SourceKind, Unary, Value,
+    Access, App, Attrs, Binary, Expr, Limit, Order, OrderBy, Query, Source, SourceKind, Unary,
+    Value,
 };
 use crate::error::ParserError;
 use crate::token::{Operator, Sym, Symbol, Token};
@@ -167,6 +168,28 @@ impl<'a> Parser<'a> {
                         expect_symbol(self.shift(), Symbol::CloseParen)?;
 
                         Value::App(App { func: name, args })
+                    } else if matches!(self.peek().sym, Sym::Symbol(Symbol::Dot)) {
+                        self.shift();
+                        let mut access = Access {
+                            target: Box::new(Expr {
+                                attrs: Attrs::new(token.into(), self.scope),
+                                value: Value::Id(name),
+                            }),
+                            field: self.parse_ident()?,
+                        };
+
+                        while matches!(self.peek().sym, Sym::Symbol(Symbol::Dot)) {
+                            self.shift();
+                            access = Access {
+                                target: Box::new(Expr {
+                                    attrs: access.target.attrs,
+                                    value: Value::Access(access),
+                                }),
+                                field: self.parse_ident()?,
+                            };
+                        }
+
+                        Value::Access(access)
                     } else {
                         Value::Id(name)
                     }
