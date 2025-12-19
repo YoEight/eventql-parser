@@ -26,7 +26,6 @@ pub enum ParserError<'a> {
     ExpectedIdent(Token<'a>),
     ExpectedKeyword(&'static str, Token<'a>),
     ExpectedSymbol(Symbol, Token<'a>),
-    ExpectedOperator(Token<'a>),
     UnexpectedToken(Token<'a>),
     UnexpectedEof,
 }

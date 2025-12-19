@@ -244,14 +244,10 @@ impl<'a> Parser<'a> {
 
         loop {
             let token = self.peek();
-            if matches!(token.sym, Sym::Eof | Sym::Symbol(Symbol::CloseParen)) {
-                break;
-            }
-
             let operator = if let Sym::Operator(op) = token.sym {
                 op
             } else {
-                return Err(ParserError::ExpectedOperator(token));
+                break;
             };
 
             let (lhs_bind, rhs_bind) = binding_pow(operator);
