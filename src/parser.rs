@@ -1,6 +1,6 @@
 use crate::ast::{
-    Access, App, Attrs, Binary, Expr, Limit, Order, OrderBy, Query, Source, SourceKind, Unary,
-    Value,
+    Access, App, Attrs, Binary, Expr, Field, Limit, Order, OrderBy, Query, Source, SourceKind,
+    Unary, Value,
 };
 use crate::error::ParserError;
 use crate::token::{Operator, Sym, Symbol, Token};
@@ -134,8 +134,8 @@ impl<'a> Parser<'a> {
             Sym::Id(_)
             | Sym::String(_)
             | Sym::Number(_)
-            | Sym::Symbol(Symbol::OpenParen | Symbol::OpenBracket)
-            | Sym::Operator(Operator::Add | Operator::Sub) => self.parse_binary(0),
+            | Sym::Symbol(Symbol::OpenParen | Symbol::OpenBracket | Symbol::OpenBrace)
+            | Sym::Operator(Operator::Add | Operator::Sub | Operator::Not) => self.parse_binary(0),
 
             _ => Err(ParserError::UnexpectedToken(token)),
         }
@@ -223,7 +223,33 @@ impl<'a> Parser<'a> {
                 Value::Array(elems)
             }
 
-            Sym::Operator(op) if matches!(op, Operator::Add | Operator::Sub) => {
+            Sym::Symbol(Symbol::OpenBrace) => {
+                let mut fields = vec![];
+
+                if !matches!(self.peek().sym, Sym::Symbol(Symbol::CloseBrace)) {
+                    let name = self.parse_ident()?;
+                    expect_symbol(self.shift(), Symbol::Colon)?;
+                    let value = self.parse_expr()?;
+
+                    fields.push(Field { name, value });
+
+                    while matches!(self.peek().sym, Sym::Symbol(Symbol::Comma)) {
+                        self.shift();
+
+                        let name = self.parse_ident()?;
+                        expect_symbol(self.shift(), Symbol::Colon)?;
+                        let value = self.parse_expr()?;
+
+                        fields.push(Field { name, value });
+                    }
+                }
+
+                expect_symbol(self.shift(), Symbol::CloseBrace)?;
+
+                Value::Record(fields)
+            }
+
+            Sym::Operator(op) if matches!(op, Operator::Add | Operator::Sub | Operator::Not) => {
                 Value::Unary(Unary {
                     operator: op,
                     expr: Box::new(self.parse_expr()?),
@@ -274,6 +300,8 @@ impl<'a> Parser<'a> {
 
     fn parse_query<'b>(&'b mut self) -> ParseResult<'a, Query<'a>> {
         self.scope += 1;
+        let scope = self.scope;
+
         let mut sources = vec![];
         let pos = self.peek().into();
 
@@ -323,7 +351,7 @@ impl<'a> Parser<'a> {
         self.scope -= 1;
 
         Ok(Query {
-            attrs: Attrs::new(pos, self.scope),
+            attrs: Attrs::new(pos, scope),
             sources,
             predicate,
             group_by,
@@ -356,9 +384,15 @@ fn expect_symbol(token: Token, expect: Symbol) -> ParseResult<()> {
 
 fn binding_pow(op: Operator) -> (u64, u64) {
     match op {
-        Operator::Add | Operator::Sub => (10, 11),
-        Operator::Mul | Operator::Div => (20, 21),
-        _ => (1, 2),
+        Operator::Add | Operator::Sub => (20, 21),
+        Operator::Mul | Operator::Div => (30, 31),
+        Operator::Eq
+        | Operator::Neq
+        | Operator::Gt
+        | Operator::Lt
+        | Operator::Gte
+        | Operator::Lte => (10, 11),
+        Operator::And | Operator::Or | Operator::Xor | Operator::Not => (1, 2),
     }
 }
 

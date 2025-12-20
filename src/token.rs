@@ -24,6 +24,10 @@ pub enum Operator {
     Lte,
     Gt,
     Gte,
+    And,
+    Or,
+    Xor,
+    Not,
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize)]

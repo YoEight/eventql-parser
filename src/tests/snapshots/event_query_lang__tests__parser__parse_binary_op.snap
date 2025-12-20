@@ -1,0 +1,189 @@
+---
+source: src/tests/parser.rs
+expression: parse(tokens.as_slice()).unwrap()
+---
+attrs:
+  pos:
+    line: 1
+    col: 1
+  scope: 1
+  tpe: Unspecified
+sources:
+  - binding: e
+    kind: Events
+predicate:
+  attrs:
+    pos:
+      line: 2
+      col: 7
+    scope: 1
+    tpe: Unspecified
+  value:
+    Binary:
+      lhs:
+        attrs:
+          pos:
+            line: 2
+            col: 7
+          scope: 1
+          tpe: Unspecified
+        value:
+          Binary:
+            lhs:
+              attrs:
+                pos:
+                  line: 2
+                  col: 7
+                scope: 1
+                tpe: Unspecified
+              value:
+                Binary:
+                  lhs:
+                    attrs:
+                      pos:
+                        line: 2
+                        col: 7
+                      scope: 1
+                      tpe: Unspecified
+                    value:
+                      Access:
+                        target:
+                          attrs:
+                            pos:
+                              line: 2
+                              col: 7
+                            scope: 1
+                            tpe: Unspecified
+                          value:
+                            Access:
+                              target:
+                                attrs:
+                                  pos:
+                                    line: 2
+                                    col: 7
+                                  scope: 1
+                                  tpe: Unspecified
+                                value:
+                                  Id: e
+                              field: data
+                        field: foo
+                  operator: Eq
+                  rhs:
+                    attrs:
+                      pos:
+                        line: 2
+                        col: 21
+                      scope: 1
+                      tpe: Unspecified
+                    value:
+                      String: foobar
+            operator: And
+            rhs:
+              attrs:
+                pos:
+                  line: 2
+                  col: 34
+                scope: 1
+                tpe: Unspecified
+              value:
+                Binary:
+                  lhs:
+                    attrs:
+                      pos:
+                        line: 2
+                        col: 34
+                      scope: 1
+                      tpe: Unspecified
+                    value:
+                      Access:
+                        target:
+                          attrs:
+                            pos:
+                              line: 2
+                              col: 34
+                            scope: 1
+                            tpe: Unspecified
+                          value:
+                            Access:
+                              target:
+                                attrs:
+                                  pos:
+                                    line: 2
+                                    col: 34
+                                  scope: 1
+                                  tpe: Unspecified
+                                value:
+                                  Id: e
+                              field: data
+                        field: foo
+                  operator: Eq
+                  rhs:
+                    attrs:
+                      pos:
+                        line: 2
+                        col: 48
+                      scope: 1
+                      tpe: Unspecified
+                    value:
+                      Number: 42
+      operator: Or
+      rhs:
+        attrs:
+          pos:
+            line: 2
+            col: 54
+          scope: 1
+          tpe: Unspecified
+        value:
+          Binary:
+            lhs:
+              attrs:
+                pos:
+                  line: 2
+                  col: 54
+                scope: 1
+                tpe: Unspecified
+              value:
+                Access:
+                  target:
+                    attrs:
+                      pos:
+                        line: 2
+                        col: 54
+                      scope: 1
+                      tpe: Unspecified
+                    value:
+                      Access:
+                        target:
+                          attrs:
+                            pos:
+                              line: 2
+                              col: 54
+                            scope: 1
+                            tpe: Unspecified
+                          value:
+                            Id: e
+                        field: data
+                  field: foo
+            operator: Eq
+            rhs:
+              attrs:
+                pos:
+                  line: 2
+                  col: 68
+                scope: 1
+                tpe: Unspecified
+              value:
+                Number: 123
+group_by: ~
+order_by: ~
+limit: ~
+projection:
+  attrs:
+    pos:
+      line: 3
+      col: 14
+    scope: 1
+    tpe: Unspecified
+  value:
+    Id: e
