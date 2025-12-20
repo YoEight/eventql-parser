@@ -9,6 +9,8 @@ use nom::number::complete::double;
 use nom::sequence::{delimited, pair};
 use nom::{IResult, Parser};
 
+// type IResult<'a, A, B> = nom::IResult<A, B, nom::error::In<Text<'a>>>;
+
 pub fn tokenize(input: &str) -> Result<Vec<Token<'_>>, nom::Err<Error<Text<'_>>>> {
     let mut input = Text::new(input);
     let mut tokens = Vec::new();
