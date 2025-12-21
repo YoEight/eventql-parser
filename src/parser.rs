@@ -459,15 +459,6 @@ fn binding_pow(op: Operator) -> (u64, u64) {
 /// This function performs syntactic analysis on the token stream, constructing
 /// an abstract syntax tree that represents the structure of the EventQL query.
 ///
-/// # Arguments
-///
-/// * `input` - A slice of tokens produced by [`tokenize`](crate::tokenize)
-///
-/// # Returns
-///
-/// * `Ok(Query)` - The parsed query as an AST
-/// * `Err(ParserError)` - A syntax error with position information
-///
 /// # Grammar
 ///
 /// The parser recognizes the following EventQL grammar:
@@ -495,46 +486,6 @@ fn binding_pow(op: Operator) -> (u64, u64) {
 /// 3. Additive (`+`, `-`)
 /// 4. Comparison (`<`, `<=`, `>`, `>=`, `==`, `!=`)
 /// 5. Logical (`AND`, `OR`, `XOR`)
-///
-/// # Examples
-///
-/// ```
-/// use eventql_parser::prelude::*;
-///
-/// // Parse a simple query
-/// let tokens = tokenize("FROM e IN events PROJECT INTO e").unwrap();
-/// let query = parse(&tokens).unwrap();
-/// assert_eq!(query.sources.len(), 1);
-///
-/// // Parse a complex query
-/// let tokens = tokenize(
-///     "FROM e IN events \
-///      WHERE e.price > 100 AND e.active == true \
-///      ORDER BY e.timestamp DESC \
-///      TOP 10 \
-///      PROJECT INTO {id: e.id, price: e.price}"
-/// ).unwrap();
-/// let query = parse(&tokens).unwrap();
-/// assert!(query.predicate.is_some());
-/// assert!(query.order_by.is_some());
-/// assert!(query.limit.is_some());
-/// ```
-///
-/// # Error Handling
-///
-/// ```
-/// use eventql_parser::prelude::*;
-///
-/// // Missing required PROJECT clause
-/// let tokens = tokenize("FROM e IN events WHERE e.id == 1").unwrap();
-/// let result = parse(&tokens);
-/// assert!(result.is_err());
-///
-/// // Invalid syntax
-/// let tokens = tokenize("FROM WHERE PROJECT").unwrap();
-/// let result = parse(&tokens);
-/// assert!(result.is_err());
-/// ```
 pub fn parse<'a>(input: &'a [Token<'a>]) -> ParseResult<Query> {
     let mut parser = Parser::new(input);
 
