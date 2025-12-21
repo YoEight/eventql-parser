@@ -1,14 +1,36 @@
+//! Lexical analysis (tokenization) for EventQL.
+//!
+//! This module provides the tokenizer that converts raw EventQL query strings
+//! into a sequence of tokens. The tokenizer is built using the `nom` parser
+//! combinator library.
+//!
+//! # Main Function
+//!
+//! - [`tokenize`] - Convert a query string into a vector of tokens
 use crate::token::{Operator, Sym, Symbol, Text, Token};
 use nom::branch::alt;
 use nom::bytes::complete::take_while;
 use nom::character::complete::{alpha1, alphanumeric0, char, multispace0};
 use nom::character::one_of;
 use nom::combinator::{eof, opt, recognize};
-use nom::error::{context, Error};
+use nom::error::{Error, context};
 use nom::number::complete::double;
 use nom::sequence::{delimited, pair};
 use nom::{IResult, Parser};
 
+/// Tokenize an EventQL query string.
+///
+/// This function performs lexical analysis on the input string, converting it
+/// into a sequence of tokens. Each token includes position information (line
+/// and column numbers) for error reporting.
+/// # Recognized Tokens
+///
+/// - **Identifiers**: Alphanumeric names starting with a letter (e.g., `events`, `e`)
+/// - **Keywords**: Case-insensitive SQL-like keywords detected by the parser
+/// - **Numbers**: Floating-point literals (e.g., `42`, `3.14`)
+/// - **Strings**: Double-quoted string literals (e.g., `"hello"`)
+/// - **Operators**: Arithmetic (`+`, `-`, `*`, `/`), comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`), logical (`AND`, `OR`, `XOR`, `NOT`)
+/// - **Symbols**: Structural characters (`(`, `)`, `[`, `]`, `{`, `}`, `.`, `,`, `:`)
 pub fn tokenize(input: &str) -> Result<Vec<Token<'_>>, nom::Err<Error<Text<'_>>>> {
     let mut input = Text::new(input);
     let mut tokens = Vec::new();

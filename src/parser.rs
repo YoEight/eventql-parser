@@ -1,3 +1,12 @@
+//! Syntactic analysis (parsing) for EventQL.
+//!
+//! This module provides the parser that converts a sequence of tokens into
+//! an abstract syntax tree (AST). The parser implements a recursive descent
+//! parser with operator precedence for expressions.
+//!
+//! # Main Function
+//!
+//! - [`parse`] - Convert a slice of tokens into a Query AST
 use crate::ast::{
     Access, App, Attrs, Binary, Expr, Field, Limit, Order, OrderBy, Query, Source, SourceKind,
     Unary, Value,
@@ -5,6 +14,9 @@ use crate::ast::{
 use crate::error::ParserError;
 use crate::token::{Operator, Sym, Symbol, Token};
 
+/// Result type for parser operations.
+///
+/// This is a convenience alias for `Result<T, ParserError>`.
 pub type ParseResult<A> = Result<A, ParserError>;
 
 struct Parser<'a> {
@@ -427,6 +439,7 @@ fn expect_symbol(token: Token, expect: Symbol) -> ParseResult<()> {
     ))
 }
 
+// Pratt parser operator binding power (precedence)
 fn binding_pow(op: Operator) -> (u64, u64) {
     match op {
         Operator::Add | Operator::Sub => (20, 21),
@@ -441,6 +454,87 @@ fn binding_pow(op: Operator) -> (u64, u64) {
     }
 }
 
+/// Parse a sequence of tokens into a Query AST.
+///
+/// This function performs syntactic analysis on the token stream, constructing
+/// an abstract syntax tree that represents the structure of the EventQL query.
+///
+/// # Arguments
+///
+/// * `input` - A slice of tokens produced by [`tokenize`](crate::tokenize)
+///
+/// # Returns
+///
+/// * `Ok(Query)` - The parsed query as an AST
+/// * `Err(ParserError)` - A syntax error with position information
+///
+/// # Grammar
+///
+/// The parser recognizes the following EventQL grammar:
+///
+/// ```text
+/// Query     := FROM+ WHERE? GROUP_BY? ORDER_BY? LIMIT? PROJECT
+/// FROM      := "FROM" Id "IN" SourceKind
+/// SourceKind := Id | String | "(" Query ")"
+/// WHERE     := "WHERE" Expr
+/// GROUP_BY  := "GROUP" "BY" Expr
+/// ORDER_BY  := "ORDER" "BY" Expr ("ASC" | "DESC")
+/// LIMIT     := ("TOP" | "SKIP") Number
+/// PROJECT   := "PROJECT" "INTO" Expr
+/// Expr      := Binary | Unary | Primary
+/// Primary   := Number | String | Bool | Id | Array | Record | Access | App | "(" Expr ")"
+/// ```
+///
+/// # Expression Precedence
+///
+/// The parser uses a Pratt parser for expressions with the following precedence
+/// (from highest to lowest):
+///
+/// 1. Unary operators (`+`, `-`, `NOT`)
+/// 2. Multiplicative (`*`, `/`)
+/// 3. Additive (`+`, `-`)
+/// 4. Comparison (`<`, `<=`, `>`, `>=`, `==`, `!=`)
+/// 5. Logical (`AND`, `OR`, `XOR`)
+///
+/// # Examples
+///
+/// ```
+/// use eventql_parser::prelude::*;
+///
+/// // Parse a simple query
+/// let tokens = tokenize("FROM e IN events PROJECT INTO e").unwrap();
+/// let query = parse(&tokens).unwrap();
+/// assert_eq!(query.sources.len(), 1);
+///
+/// // Parse a complex query
+/// let tokens = tokenize(
+///     "FROM e IN events \
+///      WHERE e.price > 100 AND e.active == true \
+///      ORDER BY e.timestamp DESC \
+///      TOP 10 \
+///      PROJECT INTO {id: e.id, price: e.price}"
+/// ).unwrap();
+/// let query = parse(&tokens).unwrap();
+/// assert!(query.predicate.is_some());
+/// assert!(query.order_by.is_some());
+/// assert!(query.limit.is_some());
+/// ```
+///
+/// # Error Handling
+///
+/// ```
+/// use eventql_parser::prelude::*;
+///
+/// // Missing required PROJECT clause
+/// let tokens = tokenize("FROM e IN events WHERE e.id == 1").unwrap();
+/// let result = parse(&tokens);
+/// assert!(result.is_err());
+///
+/// // Invalid syntax
+/// let tokens = tokenize("FROM WHERE PROJECT").unwrap();
+/// let result = parse(&tokens);
+/// assert!(result.is_err());
+/// ```
 pub fn parse<'a>(input: &'a [Token<'a>]) -> ParseResult<Query> {
     let mut parser = Parser::new(input);
 
