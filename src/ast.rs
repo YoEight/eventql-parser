@@ -243,7 +243,7 @@ pub enum SourceKind {
     /// Subject pattern (string literal used as event subject pattern)
     Subject(String),
     /// Nested subquery
-    Subquery(Query),
+    Subquery(Box<Query>),
 }
 
 /// ORDER BY clause specification.

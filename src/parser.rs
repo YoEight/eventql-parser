@@ -67,11 +67,11 @@ impl<'a> Parser<'a> {
         match token.sym {
             Sym::Id(id) => Ok(SourceKind::Name(id.to_owned())),
             Sym::String(sub) => Ok(SourceKind::Subject(sub.to_owned())),
-            Sym::Symbol(sym) if matches!(sym, Symbol::OpenParen) => {
+            Sym::Symbol(Symbol::OpenParen) => {
                 let query = self.parse_query()?;
                 expect_symbol(self.shift(), Symbol::CloseParen)?;
 
-                Ok(SourceKind::Subquery(query))
+                Ok(SourceKind::Subquery(Box::new(query)))
             }
             _ => Err(ParserError::UnexpectedToken(
                 token.line,
@@ -188,52 +188,50 @@ impl<'a> Parser<'a> {
                     Value::Bool(true)
                 } else if name.eq_ignore_ascii_case("false") {
                     Value::Bool(false)
-                } else {
-                    if matches!(self.peek().sym, Sym::Symbol(Symbol::OpenParen)) {
-                        self.shift();
+                } else if matches!(self.peek().sym, Sym::Symbol(Symbol::OpenParen)) {
+                    self.shift();
 
-                        let mut args = vec![];
+                    let mut args = vec![];
 
-                        if !matches!(self.peek().sym, Sym::Symbol(Symbol::CloseParen)) {
+                    if !matches!(self.peek().sym, Sym::Symbol(Symbol::CloseParen)) {
+                        args.push(self.parse_expr()?);
+
+                        while matches!(self.peek().sym, Sym::Symbol(Symbol::Comma)) {
+                            self.shift();
                             args.push(self.parse_expr()?);
-
-                            while matches!(self.peek().sym, Sym::Symbol(Symbol::Comma)) {
-                                self.shift();
-                                args.push(self.parse_expr()?);
-                            }
                         }
+                    }
 
-                        expect_symbol(self.shift(), Symbol::CloseParen)?;
+                    expect_symbol(self.shift(), Symbol::CloseParen)?;
 
-                        Value::App(App {
-                            func: name.to_owned(),
-                            args,
-                        })
-                    } else if matches!(self.peek().sym, Sym::Symbol(Symbol::Dot)) {
+                    Value::App(App {
+                        func: name.to_owned(),
+                        args,
+                    })
+                } else if matches!(self.peek().sym, Sym::Symbol(Symbol::Dot)) {
+                    self.shift();
+                    let mut access = Access {
+                        target: Box::new(Expr {
+                            attrs: Attrs::new(token.into(), self.scope),
+                            value: Value::Id(name.to_owned()),
+                        }),
+                        field: self.parse_ident()?,
+                    };
+
+                    while matches!(self.peek().sym, Sym::Symbol(Symbol::Dot)) {
                         self.shift();
-                        let mut access = Access {
+                        access = Access {
                             target: Box::new(Expr {
-                                attrs: Attrs::new(token.into(), self.scope),
-                                value: Value::Id(name.to_owned()),
+                                attrs: access.target.attrs,
+                                value: Value::Access(access),
                             }),
                             field: self.parse_ident()?,
                         };
-
-                        while matches!(self.peek().sym, Sym::Symbol(Symbol::Dot)) {
-                            self.shift();
-                            access = Access {
-                                target: Box::new(Expr {
-                                    attrs: access.target.attrs,
-                                    value: Value::Access(access),
-                                }),
-                                field: self.parse_ident()?,
-                            };
-                        }
-
-                        Value::Access(access)
-                    } else {
-                        Value::Id(name.to_owned())
                     }
+
+                    Value::Access(access)
+                } else {
+                    Value::Id(name.to_owned())
                 }
             }
 
