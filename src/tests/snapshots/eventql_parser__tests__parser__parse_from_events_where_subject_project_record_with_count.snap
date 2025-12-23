@@ -74,3 +74,4 @@ projection:
             App:
               func: COUNT
               args: []
+distinct: false

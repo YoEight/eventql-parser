@@ -323,7 +323,7 @@ pub enum Limit {
 /// [GROUP BY <field> [HAVING <condition>]]
 /// [ORDER BY <field> ASC|DESC]
 /// [TOP|SKIP <n>]
-/// PROJECT INTO <projection>
+/// PROJECT INTO [DISTINCT] <projection>
 /// ```
 ///
 /// # Examples
@@ -360,4 +360,6 @@ pub struct Query {
     pub limit: Option<Limit>,
     /// PROJECT INTO clause expression (required)
     pub projection: Expr,
+    /// Remove duplicate rows from the query's results
+    pub distinct: bool,
 }
