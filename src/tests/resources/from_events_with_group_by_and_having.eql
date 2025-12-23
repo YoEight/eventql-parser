@@ -1,0 +1,5 @@
+
+FROM e IN events
+WHERE e.price > 20
+GROUP BY e.name HAVING name != "foo"
+PROJECT INTO e

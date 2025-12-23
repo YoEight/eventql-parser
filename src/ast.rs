@@ -274,6 +274,23 @@ pub enum Order {
     Desc,
 }
 
+/// GROUP BY clause specification
+///
+/// Defines how query results should be order by.
+/// # Examples
+///
+/// In `GROUP BY e.age HAVING age > 123`, this would be represented as:
+/// - `expr`: expression for `e.age`
+/// - `predicate`: `age > 123`
+#[derive(Debug, Clone, Serialize)]
+pub struct GroupBy {
+    /// Expression to group by
+    pub expr: Expr,
+
+    /// Predicate to filter groups after aggregation
+    pub predicate: Option<Expr>,
+}
+
 /// Result set limit specification.
 ///
 /// EventQL supports two types of limits:
@@ -300,10 +317,11 @@ pub enum Limit {
 /// # Structure
 ///
 /// ```text
-/// FROM <sources>
-/// [WHERE <predicate>]
-/// [GROUP BY <expr>]
-/// [ORDER BY <expr> ASC|DESC]
+/// FROM <alias> <source>
+/// [FROM <alias> <source>] ...
+/// [WHERE <condition>]
+/// [GROUP BY <field> [HAVING <condition>]]
+/// [ORDER BY <field> ASC|DESC]
 /// [TOP|SKIP <n>]
 /// PROJECT INTO <projection>
 /// ```
@@ -335,7 +353,7 @@ pub struct Query {
     /// Optional WHERE clause filter predicate
     pub predicate: Option<Expr>,
     /// Optional GROUP BY clause expression
-    pub group_by: Option<Expr>,
+    pub group_by: Option<GroupBy>,
     /// Optional ORDER BY clause
     pub order_by: Option<OrderBy>,
     /// Optional LIMIT clause (TOP or SKIP)
