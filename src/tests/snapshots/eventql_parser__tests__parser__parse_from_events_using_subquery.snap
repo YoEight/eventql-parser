@@ -122,6 +122,7 @@ sources:
                                 Id: e
                             field: data
                       field: total
+        distinct: false
 predicate:
   attrs:
     pos:
@@ -172,3 +173,4 @@ projection:
     tpe: Unspecified
   value:
     Id: e
+distinct: false

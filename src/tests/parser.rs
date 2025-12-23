@@ -60,3 +60,9 @@ fn test_parser_from_events_with_group_by_and_having() {
     .unwrap();
     insta::assert_yaml_snapshot!(parse(tokens.as_slice()).unwrap());
 }
+
+#[test]
+fn test_parser_from_events_with_distinct() {
+    let tokens = tokenize(include_str!("./resources/from_events_with_distinct.eql")).unwrap();
+    insta::assert_yaml_snapshot!(parse(tokens.as_slice()).unwrap());
+}

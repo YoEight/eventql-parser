@@ -404,6 +404,15 @@ impl<'a> Parser<'a> {
         expect_keyword(self.shift(), "project")?;
         expect_keyword(self.shift(), "into")?;
 
+        let distinct = if let Sym::Id(name) = self.peek().sym
+            && name.eq_ignore_ascii_case("distinct")
+        {
+            self.shift();
+            true
+        } else {
+            false
+        };
+
         let projection = self.parse_expr()?;
 
         self.scope -= 1;
@@ -416,6 +425,7 @@ impl<'a> Parser<'a> {
             order_by,
             limit,
             projection,
+            distinct,
         })
     }
 }

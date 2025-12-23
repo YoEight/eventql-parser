@@ -122,3 +122,4 @@ projection:
                         Id: e
                     field: data
               field: price
+distinct: false
