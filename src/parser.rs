@@ -7,6 +7,7 @@
 //! # Main Function
 //!
 //! - [`parse`] - Convert a slice of tokens into a Query AST
+use crate::GroupBy;
 use crate::ast::{
     Access, App, Attrs, Binary, Expr, Field, Limit, Order, OrderBy, Query, Source, SourceKind,
     Unary, Value,
@@ -95,11 +96,23 @@ impl<'a> Parser<'a> {
         self.parse_expr()
     }
 
-    fn parse_group_by(&mut self) -> ParseResult<Expr> {
+    fn parse_group_by(&mut self) -> ParseResult<GroupBy> {
         expect_keyword(self.shift(), "group")?;
         expect_keyword(self.shift(), "by")?;
 
-        self.parse_expr()
+        let expr = self.parse_expr()?;
+
+        let predicate = if let Sym::Id(name) = self.peek().sym
+            && name.eq_ignore_ascii_case("having")
+        {
+            self.shift();
+
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+
+        Ok(GroupBy { expr, predicate })
     }
 
     fn parse_order_by(&mut self) -> ParseResult<OrderBy> {

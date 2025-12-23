@@ -1,0 +1,111 @@
+---
+source: src/tests/parser.rs
+expression: parse(tokens.as_slice()).unwrap()
+---
+attrs:
+  pos:
+    line: 2
+    col: 1
+  scope: 1
+  tpe: Unspecified
+sources:
+  - binding: e
+    kind:
+      Name: events
+predicate:
+  attrs:
+    pos:
+      line: 3
+      col: 7
+    scope: 1
+    tpe: Unspecified
+  value:
+    Binary:
+      lhs:
+        attrs:
+          pos:
+            line: 3
+            col: 7
+          scope: 1
+          tpe: Unspecified
+        value:
+          Access:
+            target:
+              attrs:
+                pos:
+                  line: 3
+                  col: 7
+                scope: 1
+                tpe: Unspecified
+              value:
+                Id: e
+            field: price
+      operator: Gt
+      rhs:
+        attrs:
+          pos:
+            line: 3
+            col: 17
+          scope: 1
+          tpe: Unspecified
+        value:
+          Number: 20
+group_by:
+  expr:
+    attrs:
+      pos:
+        line: 4
+        col: 10
+      scope: 1
+      tpe: Unspecified
+    value:
+      Access:
+        target:
+          attrs:
+            pos:
+              line: 4
+              col: 10
+            scope: 1
+            tpe: Unspecified
+          value:
+            Id: e
+        field: name
+  predicate:
+    attrs:
+      pos:
+        line: 4
+        col: 24
+      scope: 1
+      tpe: Unspecified
+    value:
+      Binary:
+        lhs:
+          attrs:
+            pos:
+              line: 4
+              col: 24
+            scope: 1
+            tpe: Unspecified
+          value:
+            Id: name
+        operator: Neq
+        rhs:
+          attrs:
+            pos:
+              line: 4
+              col: 32
+            scope: 1
+            tpe: Unspecified
+          value:
+            String: foo
+order_by: ~
+limit: ~
+projection:
+  attrs:
+    pos:
+      line: 5
+      col: 14
+    scope: 1
+    tpe: Unspecified
+  value:
+    Id: e
