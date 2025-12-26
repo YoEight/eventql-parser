@@ -11,7 +11,7 @@
 //! - [`Value`] - The various kinds of expression values (literals, operators, etc.)
 //! - [`Source`] - Data sources in FROM clauses
 //!
-use std::{collections::BTreeMap, marker::PhantomData};
+use std::{collections::BTreeMap, marker::PhantomData, ops::ControlFlow};
 
 use crate::{
     analysis::{AnalysisOptions, static_analysis},
@@ -77,47 +77,66 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn check<'a>(&'a self, other: &'a Type) -> Option<&'a Type> {
+    /// Checks if two types are the same.
+    ///
+    /// Returns `ControlFlow::Continue` when typechecking is successful.
+    /// Returns `ControlFlow::Break` when typechecking failed along with the types that failed.
+    ///
+    /// * If `self` is `Type::Unspecified` then `self` is updated to the more specific `Type`.
+    /// * If `self` is `Type::Subject` and is checked against a `Type::String` then `self` is updated to `Type::String`
+    pub fn check_mut(&mut self, other: Type) -> ControlFlow<(Type, Type)> {
         match (self, other) {
-            (Self::Unspecified, _) => Some(other),
-            (_, Self::Unspecified) => Some(self),
-            (Self::Subject, Self::Subject) => Some(self),
+            (this @ Self::Unspecified, other) => {
+                *this = other;
+                ControlFlow::Continue(())
+            }
+
+            (_, Self::Unspecified) => ControlFlow::Continue(()),
+
+            (Self::Subject, Self::Subject) => ControlFlow::Continue(()),
 
             // Subjects are strings so there is no reason to reject a type
             // when compared to a string. However, when it happens, we demote
             // a subject to a string.
-            (Self::Subject, Self::String) => Some(other),
-            (Self::String, Self::Subject) => Some(self),
+            (this @ Self::Subject, Self::String) => {
+                *this = Self::String;
+                ControlFlow::Continue(())
+            }
 
-            (Self::Number, Self::Number) => Some(self),
-            (Self::String, Self::String) => Some(self),
-            (Self::Bool, Self::Bool) => Some(self),
+            (Self::String, Self::Subject) => ControlFlow::Continue(()),
+
+            (Self::Number, Self::Number) => ControlFlow::Continue(()),
+            (Self::String, Self::String) => ControlFlow::Continue(()),
+            (Self::Bool, Self::Bool) => ControlFlow::Continue(()),
+
             (Self::Array(a), Self::Array(b)) if a.len() == b.len() => {
                 if a.is_empty() {
-                    return Some(self);
+                    return ControlFlow::Continue(());
                 }
 
-                for (a, b) in a.iter().zip(b.iter()) {
-                    a.check(b)?;
+                for (a, b) in a.iter_mut().zip(b.into_iter()) {
+                    a.check_mut(b)?;
                 }
 
-                Some(self)
+                ControlFlow::Continue(())
             }
 
             (Self::Record(a), Self::Record(b)) if a.len() == b.len() => {
                 if a.is_empty() {
-                    return Some(self);
+                    return ControlFlow::Continue(());
                 }
 
-                for ((ak, av), (bk, bv)) in a.iter().zip(b.iter()) {
+                for (ak, bk) in a.keys().zip(b.keys()) {
                     if ak != bk {
-                        return None;
+                        return ControlFlow::Break((Self::Record(a.clone()), Self::Record(b)));
                     }
-
-                    av.check(bv)?;
                 }
 
-                Some(self)
+                for (av, bv) in a.values_mut().zip(b.into_values()) {
+                    av.check_mut(bv)?;
+                }
+
+                ControlFlow::Continue(())
             }
 
             (
@@ -131,20 +150,19 @@ impl Type {
                 },
             ) if a_args.len() == b_args.len() => {
                 if a_args.is_empty() {
-                    a_res.check(b_res)?;
-                    return Some(self);
+                    return a_res.check_mut(*b_res);
                 }
 
-                for (a, b) in a_args.iter().zip(b_args.iter()) {
-                    a.check(b)?;
+                for (a, b) in a_args.iter_mut().zip(b_args.into_iter()) {
+                    a.check_mut(b)?;
                 }
 
-                a_res.check(b_res)?;
+                a_res.check_mut(*b_res)?;
 
-                Some(self)
+                ControlFlow::Continue(())
             }
 
-            _ => None,
+            (this, other) => ControlFlow::Break((this.clone(), other)),
         }
     }
 }
