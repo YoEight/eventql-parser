@@ -15,7 +15,7 @@ use crate::ast::{
 };
 use crate::error::ParserError;
 use crate::token::{Operator, Sym, Symbol, Token};
-use crate::{GroupBy, Raw};
+use crate::{Binding, GroupBy, Raw};
 
 /// Result type for parser operations.
 ///
@@ -86,7 +86,22 @@ impl<'a> Parser<'a> {
 
     fn parse_source(&mut self) -> ParseResult<Source<Raw>> {
         expect_keyword(self.shift(), "from")?;
-        let binding = self.parse_ident()?;
+
+        let token = self.shift();
+        let binding = if let Sym::Id(name) = token.sym {
+            Binding {
+                name: name.to_owned(),
+                scope: self.scope,
+                pos: token.into(),
+            }
+        } else {
+            return Err(ParserError::ExpectedIdent(
+                token.line,
+                token.col,
+                token.sym.to_string(),
+            ));
+        };
+
         expect_keyword(self.shift(), "in")?;
         let kind = self.parse_source_kind()?;
 
@@ -237,7 +252,7 @@ impl<'a> Parser<'a> {
                         self.shift();
                         access = Access {
                             target: Box::new(Expr {
-                                attrs: access.target.attrs.clone(),
+                                attrs: access.target.attrs,
                                 value: Value::Access(access),
                             }),
                             field: self.parse_ident()?,
@@ -346,7 +361,7 @@ impl<'a> Parser<'a> {
             let rhs = self.parse_binary(rhs_bind)?;
 
             lhs = Expr {
-                attrs: lhs.attrs.clone(),
+                attrs: lhs.attrs,
                 value: Value::Binary(Binary {
                     lhs: Box::new(lhs),
                     operator,
@@ -369,6 +384,11 @@ impl<'a> Parser<'a> {
             && name.eq_ignore_ascii_case("from")
         {
             sources.push(self.parse_source()?);
+        }
+
+        if sources.is_empty() {
+            let token = self.peek();
+            return Err(ParserError::MissingFromStatement(token.line, token.col));
         }
 
         let predicate = if let Sym::Id(name) = self.peek().sym
@@ -420,6 +440,7 @@ impl<'a> Parser<'a> {
         self.scope -= 1;
 
         Ok(Query {
+            scope,
             attrs: Attrs::new(pos, scope),
             sources,
             predicate,

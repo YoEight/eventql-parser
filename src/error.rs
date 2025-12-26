@@ -58,6 +58,9 @@ pub enum ParserError {
     #[error("{0}:{1}: expected identifier but got {2}")]
     ExpectedIdent(u32, u32, String),
 
+    #[error("{0}:{1}: missing FROM statement")]
+    MissingFromStatement(u32, u32),
+
     /// Expected a specific keyword but found something else.
     ///
     /// Fields: `(line, column, expected_keyword, found_token)`

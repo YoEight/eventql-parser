@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{Query, Raw, Source, SourceKind, Type, Typed, error::AnalysisError};
+use crate::{
+    Attrs, Expr, Query, Raw, Source, SourceKind, Type, Typed, Value, error::AnalysisError,
+};
 
 pub type AnalysisResult<A> = std::result::Result<A, AnalysisError>;
 
@@ -38,7 +40,6 @@ pub struct TypeInfo {
 struct Analysis<'a> {
     options: &'a AnalysisOptions,
     registry: TypeRegistry,
-    scope: u64,
 }
 
 impl<'a> Analysis<'a> {
@@ -46,23 +47,34 @@ impl<'a> Analysis<'a> {
         Self {
             options,
             registry: TypeRegistry::default(),
-            scope: 1,
         }
     }
 
     fn analyze_query(&mut self, query: Query<Raw>) -> AnalysisResult<Query<Typed>> {
-        for source in query.sources {}
+        let scope = query.scope;
+        let mut typed_sources = Vec::with_capacity(query.sources.len());
+
+        for source in query.sources {
+            typed_sources.push(self.analyze_source(scope, source)?);
+        }
+
+        if let Some(expr) = &query.predicate {}
+
         todo!()
     }
 
-    fn analyze_source(&mut self, source: Source<Raw>) -> AnalysisResult<Source<Typed>> {
+    fn analyze_source(
+        &mut self,
+        scope_id: u64,
+        source: Source<Raw>,
+    ) -> AnalysisResult<Source<Typed>> {
         let kind = self.analyze_source_kind(source.kind)?;
         let type_info = match &kind {
             SourceKind::Name(_) | SourceKind::Subject(_) => self.options.event_type_info.clone(),
             SourceKind::Subquery(query) => self.projection_type(query),
         };
 
-        let scope = self.registry.scopes.entry(self.scope).or_default();
+        let scope = self.registry.scopes.entry(scope_id).or_default();
 
         if scope
             .entries
@@ -83,7 +95,34 @@ impl<'a> Analysis<'a> {
     }
 
     fn analyze_source_kind(&mut self, kind: SourceKind<Raw>) -> AnalysisResult<SourceKind<Typed>> {
-        todo!()
+        match kind {
+            SourceKind::Name(n) => Ok(SourceKind::Name(n)),
+            SourceKind::Subject(s) => Ok(SourceKind::Subject(s)),
+            SourceKind::Subquery(query) => {
+                let query = self.analyze_query(*query)?;
+                Ok(SourceKind::Subquery(Box::new(query)))
+            }
+        }
+    }
+
+    fn analyze_expr(&mut self, expr: &Expr, expect: Type) -> AnalysisResult<()> {
+        self.analyze_value(&expr.attrs, &expr.value, expect)
+    }
+
+    fn analyze_value(&mut self, attrs: &Attrs, value: &Value, expect: Type) -> AnalysisResult<()> {
+        match value {
+            Value::Number(_) => todo!(),
+            Value::String(_) => todo!(),
+            Value::Bool(_) => todo!(),
+            Value::Id(_) => todo!(),
+            Value::Array(exprs) => todo!(),
+            Value::Record(fields) => todo!(),
+            Value::Access(access) => todo!(),
+            Value::App(app) => todo!(),
+            Value::Binary(binary) => todo!(),
+            Value::Unary(unary) => todo!(),
+            Value::Group(expr) => todo!(),
+        }
     }
 
     fn projection_type(&self, query: &Query<Typed>) -> TypeInfo {

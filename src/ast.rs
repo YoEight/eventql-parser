@@ -76,28 +76,95 @@ pub enum Type {
     App { args: Vec<Type>, result: Box<Type> },
 }
 
+impl Type {
+    pub fn check<'a>(&'a self, other: &'a Type) -> Option<&'a Type> {
+        match (self, other) {
+            (Self::Unspecified, _) => Some(other),
+            (_, Self::Unspecified) => Some(self),
+            (Self::Subject, Self::Subject) => Some(self),
+
+            // Subjects are strings so there is no reason to reject a type
+            // when compared to a string. However, when it happens, we demote
+            // a subject to a string.
+            (Self::Subject, Self::String) => Some(other),
+            (Self::String, Self::Subject) => Some(self),
+
+            (Self::Number, Self::Number) => Some(self),
+            (Self::String, Self::String) => Some(self),
+            (Self::Bool, Self::Bool) => Some(self),
+            (Self::Array(a), Self::Array(b)) if a.len() == b.len() => {
+                if a.is_empty() {
+                    return Some(self);
+                }
+
+                for (a, b) in a.iter().zip(b.iter()) {
+                    a.check(b)?;
+                }
+
+                Some(self)
+            }
+
+            (Self::Record(a), Self::Record(b)) if a.len() == b.len() => {
+                if a.is_empty() {
+                    return Some(self);
+                }
+
+                for ((ak, av), (bk, bv)) in a.iter().zip(b.iter()) {
+                    if ak != bk {
+                        return None;
+                    }
+
+                    av.check(bv)?;
+                }
+
+                Some(self)
+            }
+
+            (
+                Self::App {
+                    args: a_args,
+                    result: a_res,
+                },
+                Self::App {
+                    args: b_args,
+                    result: b_res,
+                },
+            ) if a_args.len() == b_args.len() => {
+                if a_args.is_empty() {
+                    a_res.check(b_res)?;
+                    return Some(self);
+                }
+
+                for (a, b) in a_args.iter().zip(b_args.iter()) {
+                    a.check(b)?;
+                }
+
+                a_res.check(b_res)?;
+
+                Some(self)
+            }
+
+            _ => None,
+        }
+    }
+}
+
 /// Attributes attached to each expression node.
 ///
 /// These attributes provide metadata about an expression, including its
 /// position in the source code, scope information, and type information.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct Attrs {
     /// Source position of this expression
     pub pos: Pos,
     /// Scope level (0 for top-level, incremented for subqueries)
     pub scope: u64,
-    /// Type of this expression
-    pub tpe: Type,
 }
 
 impl Attrs {
     /// Create new attributes with unspecified type.
     pub fn new(pos: Pos, scope: u64) -> Self {
-        Self {
-            pos,
-            scope,
-            tpe: Type::Unspecified,
-        }
+        Self { pos, scope }
     }
 }
 
@@ -380,6 +447,8 @@ pub struct Typed;
 /// ```
 #[derive(Debug, Clone, Serialize)]
 pub struct Query<A> {
+    /// Scope of the query. Useful to retrieve all the variables that belongs to that query
+    pub scope: u64,
     /// Metadata about this query
     pub attrs: Attrs,
     /// FROM clause sources (must have at least one)
