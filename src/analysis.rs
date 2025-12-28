@@ -118,6 +118,7 @@ impl<'a> Analysis<'a> {
             Value::Number(_) => expect.check(Type::Number),
             Value::String(_) => expect.check(Type::String),
             Value::Bool(_) => expect.check(Type::Bool),
+
             Value::Id(id) => {
                 if let Some(tpe) = self.options.default_scope.entries.get(id) {
                     expect.check(tpe.clone())
@@ -135,18 +136,20 @@ impl<'a> Analysis<'a> {
                     ));
                 }
             }
+
             Value::Array(exprs) => match expect {
-                Type::Array(types) if exprs.len() == types.len() => {
-                    let mut res_types = vec![];
-                    for (expr, expect) in exprs.iter().zip(types.into_iter()) {
-                        res_types.push(self.analyze_expr(expr, expect)?);
+                Type::Array(mut types) if exprs.len() == types.len() => {
+                    for (expr, expect) in exprs.iter().zip(types.iter_mut()) {
+                        let tmp = mem::take(expect);
+                        *expect = self.analyze_expr(expr, tmp)?;
                     }
 
-                    Ok(Type::Array(res_types))
+                    Ok(Type::Array(types))
                 }
 
                 expect => Err((expect, self.project_type(attrs.scope, value))),
             },
+
             Value::Record(fields) => match expect {
                 Type::Record(mut types) if fields.len() == types.len() => {
                     for field in fields {
@@ -166,7 +169,9 @@ impl<'a> Analysis<'a> {
 
                 expect => Err((expect, self.project_type(attrs.scope, value))),
             },
+
             Value::Access(access) => Ok(self.analyze_access(attrs.scope, access)?),
+
             Value::App(app) => match expect {
                 Type::App { args, mut result } if app.args.len() == args.len() => {
                     let mut arg_types = Vec::with_capacity(args.capacity());
@@ -194,37 +199,58 @@ impl<'a> Analysis<'a> {
 
                 expect => Err((expect, self.project_type(attrs.scope, value))),
             },
+
             Value::Binary(binary) => match binary.operator {
                 Operator::Add | Operator::Sub | Operator::Mul | Operator::Div => {
                     self.analyze_expr(&binary.lhs, Type::Number)?;
                     self.analyze_expr(&binary.rhs, Type::Number)?;
-                    Ok(Type::Number)
+                    expect.check(Type::Number)
                 }
-                Operator::Eq => {
-                    let expect_1 = self.analyze_expr(&binary.lhs, expect)?;
-                    let expect_2 = self.analyze_expr(&binary.rhs, expect_1.clone())?;
+
+                Operator::Eq
+                | Operator::Neq
+                | Operator::Lt
+                | Operator::Lte
+                | Operator::Gt
+                | Operator::Gte => {
+                    let lhs_expect = self.analyze_expr(&binary.lhs, Type::Unspecified)?;
+                    let rhs_expect = self.analyze_expr(&binary.rhs, lhs_expect.clone())?;
 
                     // If the left side didn't have enough type information while the other did,
                     // we replay another typecheck pass on the left side if the right side was conclusive
-                    if matches!(expect_1, Type::Unspecified)
-                        && !matches!(expect_2, Type::Unspecified)
+                    if matches!(lhs_expect, Type::Unspecified)
+                        && !matches!(rhs_expect, Type::Unspecified)
                     {
-                        self.analyze_expr(&binary.lhs, expect_2)?;
+                        self.analyze_expr(&binary.lhs, rhs_expect)?;
                     }
 
-                    Ok(Type::Bool)
+                    expect.check(Type::Bool)
                 }
-                Operator::Neq => todo!(),
-                Operator::Lt => todo!(),
-                Operator::Lte => todo!(),
-                Operator::Gt => todo!(),
-                Operator::Gte => todo!(),
-                Operator::And => todo!(),
-                Operator::Or => todo!(),
-                Operator::Xor => todo!(),
-                Operator::Not => todo!(),
+
+                Operator::And | Operator::Or | Operator::Xor => {
+                    self.analyze_expr(&binary.lhs, Type::Bool)?;
+                    self.analyze_expr(&binary.rhs, Type::Bool)?;
+
+                    expect.check(Type::Bool)
+                }
+
+                Operator::Not => unreachable!(),
             },
-            Value::Unary(unary) => todo!(),
+
+            Value::Unary(unary) => match unary.operator {
+                Operator::Add | Operator::Sub => {
+                    self.analyze_expr(&unary.expr, Type::Number)?;
+                    expect.check(Type::Number)
+                }
+
+                Operator::Not => {
+                    self.analyze_expr(&unary.expr, Type::Bool)?;
+                    expect.check(Type::Bool)
+                }
+
+                _ => unreachable!(),
+            },
+
             Value::Group(expr) => Ok(self.analyze_expr(expr.as_ref(), expect)?),
         };
 
