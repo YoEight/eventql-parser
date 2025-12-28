@@ -170,7 +170,7 @@ impl<'a> Analysis<'a> {
                 expect => Err((expect, self.project_type(attrs.scope, value))),
             },
 
-            Value::Access(access) => Ok(self.analyze_access(attrs.scope, access)?),
+            Value::Access(access) => Ok(self.analyze_access(&attrs, access, expect)?),
 
             Value::App(app) => match expect {
                 Type::App { args, mut result } if app.args.len() == args.len() => {
@@ -259,8 +259,74 @@ impl<'a> Analysis<'a> {
         })
     }
 
-    fn analyze_access(&mut self, scope_id: u64, access: &Access) -> AnalysisResult<Type> {
-        todo!()
+    fn analyze_access(
+        &mut self,
+        attrs: &Attrs,
+        access: &Access,
+        expect: Type,
+    ) -> AnalysisResult<Type> {
+        enum Def<A, B> {
+            User(A),
+            System(B),
+        }
+
+        fn go<'a>(
+            reg: &'a mut TypeRegistry,
+            sys: &'a AnalysisOptions,
+            attrs: &'a Attrs,
+            value: &'a Value,
+        ) -> AnalysisResult<Def<&'a mut Type, Type>> {
+            match value {
+                Value::Id(id) => {
+                    if let Some(tpe) = sys.default_scope.entries.get(id.as_str()) {
+                        Ok(Def::System(tpe.clone()))
+                    } else if let Some(tpe) = reg
+                        .scopes
+                        .entry(attrs.scope)
+                        .or_default()
+                        .entries
+                        .get_mut(id.as_str())
+                    {
+                        Ok(Def::User(tpe))
+                    } else {
+                        Err(AnalysisError::VariableUndeclared(
+                            attrs.pos.line,
+                            attrs.pos.col,
+                            id.clone(),
+                        ))
+                    }
+                }
+                Value::Access(access) => {
+                    match go(reg, sys, &access.target.attrs, &access.target.value)? {
+                        Def::User(tpe) => {
+                            if let Type::Record(fields) = tpe
+                                && let Some(tpe) = fields.get_mut(access.field.as_str())
+                            {
+                                Ok(Def::User(tpe))
+                            } else {
+                                Err(AnalysisError::FieldUndeclared(
+                                    attrs.pos.line,
+                                    attrs.pos.col,
+                                    access.field.clone(),
+                                ))
+                            }
+                        }
+                        Def::System(_) => todo!(),
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        match go(
+            &mut self.registry,
+            &self.options,
+            &access.target.attrs,
+            &access.target.value,
+        )? {
+            Def::User(_) => todo!(),
+            Def::System(_) => todo!(),
+        }
     }
 
     fn get_id_type_mut(&mut self, scope_id: u64, id: &str) -> Option<&mut Type> {
