@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
+    mem,
     ops::ControlFlow,
 };
 
@@ -111,17 +112,21 @@ impl<'a> Analysis<'a> {
         &mut self,
         attrs: &Attrs,
         value: &Value,
-        mut expect: Type,
+        expect: Type,
     ) -> AnalysisResult<Type> {
         let result = match value {
-            Value::Number(_) => expect.check(Type::Number).map_continue(|_| expect),
-            Value::String(_) => expect.check(Type::String).map_continue(|_| expect),
-            Value::Bool(_) => expect.check(Type::Bool).map_continue(|_| expect),
+            Value::Number(_) => expect.check(Type::Number),
+            Value::String(_) => expect.check(Type::String),
+            Value::Bool(_) => expect.check(Type::Bool),
             Value::Id(id) => {
                 if let Some(tpe) = self.options.default_scope.entries.get(id) {
-                    expect.check(tpe.clone()).map_continue(|_| expect)
+                    expect.check(tpe.clone())
                 } else if let Some(tpe) = self.get_id_type_mut(attrs.scope, id.as_str()) {
-                    tpe.check(expect).map_continue(|_| tpe)
+                    let tmp = mem::take(tpe);
+                    tmp.check(expect).map(|res| {
+                        *tpe = res;
+                        tpe.clone()
+                    })
                 } else {
                     return Err(AnalysisError::VariableUndeclared(
                         attrs.pos.line,
@@ -137,10 +142,10 @@ impl<'a> Analysis<'a> {
                         res_types.push(self.analyze_expr(expr, expect)?);
                     }
 
-                    ControlFlow::Continue(Type::Array(res_types))
+                    Ok(Type::Array(res_types))
                 }
 
-                expect => ControlFlow::Break((expect, self.project_type(attrs.scope, value))),
+                expect => Err((expect, self.project_type(attrs.scope, value))),
             },
             Value::Record(fields) => match expect {
                 Type::Record(mut types) if fields.len() == types.len() => {
@@ -156,25 +161,27 @@ impl<'a> Analysis<'a> {
                         }
                     }
 
-                    ControlFlow::Continue(Type::Record(types))
+                    Ok(Type::Record(types))
                 }
 
-                expect => ControlFlow::Break((expect, self.project_type(attrs.scope, value))),
+                expect => Err((expect, self.project_type(attrs.scope, value))),
             },
-            Value::Access(access) => {
-                ControlFlow::Continue(self.analyze_access(attrs.scope, access)?)
-            }
+            Value::Access(access) => Ok(self.analyze_access(attrs.scope, access)?),
             Value::App(app) => match expect {
                 Type::App { args, mut result } if app.args.len() == args.len() => {
                     let mut arg_types = Vec::with_capacity(args.capacity());
-                    for (idx, arg) in args.into_iter().enumerate() {
-                        arg_types.push(self.analyze_expr(&app.args[idx], arg)?);
+                    for (arg, tpe) in app.args.iter().zip(args.into_iter()) {
+                        arg_types.push(self.analyze_expr(arg, tpe)?);
                     }
 
                     if let Some(tpe) = self.options.default_scope.entries.get(app.func.as_str()) {
-                        result.check(tpe.clone()).map_continue(|_| Type::App {
-                            args: arg_types,
-                            result,
+                        let tmp = mem::take(result.as_mut());
+                        tmp.check(tpe.clone()).map(|tpe| {
+                            *result = tpe;
+                            Type::App {
+                                args: arg_types,
+                                result,
+                            }
                         })
                     } else {
                         return Err(AnalysisError::FuncUndeclared(
@@ -185,44 +192,45 @@ impl<'a> Analysis<'a> {
                     }
                 }
 
-                expect => ControlFlow::Break((expect, self.project_type(attrs.scope, value))),
+                expect => Err((expect, self.project_type(attrs.scope, value))),
             },
-            Value::Binary(binary) => {
-                let (res, lhs_expect, rhs_expect) = match binary.operator {
-                    Operator::Add => (Type::Number, Type::Number, Type::Number),
-                    Operator::Sub => (Type::Number, Type::Number, Type::Number),
-                    Operator::Mul => (Type::Number, Type::Number, Type::Number),
-                    Operator::Div => (Type::Number, Type::Number, Type::Number),
-                    Operator::Eq => (Type::Bool, Type::Unspecified, Type::Unspecified),
-                    Operator::Neq => todo!(),
-                    Operator::Lt => todo!(),
-                    Operator::Lte => todo!(),
-                    Operator::Gt => todo!(),
-                    Operator::Gte => todo!(),
-                    Operator::And => todo!(),
-                    Operator::Or => todo!(),
-                    Operator::Xor => todo!(),
-                    Operator::Not => todo!(),
-                };
-                todo!()
-            }
+            Value::Binary(binary) => match binary.operator {
+                Operator::Add | Operator::Sub | Operator::Mul | Operator::Div => {
+                    self.analyze_expr(&binary.lhs, Type::Number)?;
+                    self.analyze_expr(&binary.rhs, Type::Number)?;
+                    Ok(Type::Number)
+                }
+                Operator::Eq => {
+                    let expect_1 = self.analyze_expr(&binary.lhs, expect)?;
+                    let expect_2 = self.analyze_expr(&binary.rhs, expect_1.clone())?;
+
+                    // If the left side didn't have enough type information while the other did,
+                    // we replay another typecheck pass on the left side if the right side was conclusive
+                    if matches!(expect_1, Type::Unspecified)
+                        && !matches!(expect_2, Type::Unspecified)
+                    {
+                        self.analyze_expr(&binary.lhs, expect_2)?;
+                    }
+
+                    Ok(Type::Bool)
+                }
+                Operator::Neq => todo!(),
+                Operator::Lt => todo!(),
+                Operator::Lte => todo!(),
+                Operator::Gt => todo!(),
+                Operator::Gte => todo!(),
+                Operator::And => todo!(),
+                Operator::Or => todo!(),
+                Operator::Xor => todo!(),
+                Operator::Not => todo!(),
+            },
             Value::Unary(unary) => todo!(),
-            Value::Group(expr) => {
-                self.analyze_expr(expr.as_ref(), expect)?;
-                ControlFlow::Continue(())
-            }
+            Value::Group(expr) => Ok(self.analyze_expr(expr.as_ref(), expect)?),
         };
 
-        if let ControlFlow::Break((expect, actual)) = result {
-            return Err(AnalysisError::TypeMismatch(
-                attrs.pos.line,
-                attrs.pos.col,
-                expect,
-                actual,
-            ));
-        }
-
-        todo!()
+        result.map_err(|(expect, actual)| {
+            AnalysisError::TypeMismatch(attrs.pos.line, attrs.pos.col, expect, actual)
+        })
     }
 
     fn analyze_access(&mut self, scope_id: u64, access: &Access) -> AnalysisResult<Type> {

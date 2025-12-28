@@ -11,7 +11,7 @@
 //! - [`Value`] - The various kinds of expression values (literals, operators, etc.)
 //! - [`Source`] - Data sources in FROM clauses
 //!
-use std::{collections::BTreeMap, marker::PhantomData, ops::ControlFlow};
+use std::{collections::BTreeMap, marker::PhantomData, mem};
 
 use crate::{
     analysis::{AnalysisOptions, static_analysis},
@@ -53,8 +53,8 @@ impl From<Token<'_>> for Pos {
 
 /// Type information for expressions.
 ///
-/// This enum represents the type of an expression in the EventQL type system.
-/// Types can be inferred during semantic analysis or left as `Unspecified`.
+/// This enum represents the type of an expression in the E
+
 #[derive(Clone, PartialEq, Eq, Debug, Default, Serialize)]
 pub enum Type {
     /// Type has not been determined yet
@@ -84,9 +84,9 @@ impl Type {
     ///
     /// * If `self` is `Type::Unspecified` then `self` is updated to the more specific `Type`.
     /// * If `self` is `Type::Subject` and is checked against a `Type::String` then `self` is updated to `Type::String`
-    pub fn check(mut self, other: Type) -> Result<Type, (Type, Type)> {
+    pub fn check(self, other: Type) -> Result<Type, (Type, Type)> {
         match (self, other) {
-            (this @ Self::Unspecified, other) => Ok(other),
+            (Self::Unspecified, other) => Ok(other),
             (this, Self::Unspecified) => Ok(this),
             (Self::Subject, Self::Subject) => Ok(Self::Subject),
 
@@ -105,14 +105,15 @@ impl Type {
                     return Ok(Self::Array(a));
                 }
 
-                for (idx, b) in b.into_iter().enumerate() {
-                    a[idx] = a[idx].check(b)?;
+                for (a, b) in a.iter_mut().zip(b.into_iter()) {
+                    let tmp = mem::take(a);
+                    *a = tmp.check(b)?;
                 }
 
                 Ok(Self::Array(a))
             }
 
-            (Self::Record(a), Self::Record(b)) if a.len() == b.len() => {
+            (Self::Record(mut a), Self::Record(b)) if a.len() == b.len() => {
                 if a.is_empty() {
                     return Ok(Self::Record(a));
                 }
@@ -124,16 +125,17 @@ impl Type {
                 }
 
                 for (av, bv) in a.values_mut().zip(b.into_values()) {
-                    av.check(bv)?;
+                    let a = mem::take(av);
+                    *av = a.check(bv)?;
                 }
 
-                ControlFlow::Continue(())
+                Ok(Self::Record(a))
             }
 
             (
                 Self::App {
-                    args: a_args,
-                    result: a_res,
+                    args: mut a_args,
+                    result: mut a_res,
                 },
                 Self::App {
                     args: b_args,
@@ -141,19 +143,29 @@ impl Type {
                 },
             ) if a_args.len() == b_args.len() => {
                 if a_args.is_empty() {
-                    return a_res.check(*b_res);
+                    let tmp = mem::take(a_res.as_mut());
+                    *a_res = tmp.check(*b_res)?;
+                    return Ok(Self::App {
+                        args: a_args,
+                        result: a_res,
+                    });
                 }
 
                 for (a, b) in a_args.iter_mut().zip(b_args.into_iter()) {
-                    a.check(b)?;
+                    let tmp = mem::take(a);
+                    *a = tmp.check(b)?;
                 }
 
-                a_res.check(*b_res)?;
+                let tmp = mem::take(a_res.as_mut());
+                *a_res = tmp.check(*b_res)?;
 
-                ControlFlow::Continue(())
+                Ok(Self::App {
+                    args: a_args,
+                    result: a_res,
+                })
             }
 
-            (this, other) => ControlFlow::Break((this.clone(), other)),
+            (this, other) => Err((this, other)),
         }
     }
 }
