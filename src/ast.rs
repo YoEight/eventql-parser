@@ -84,56 +84,47 @@ impl Type {
     ///
     /// * If `self` is `Type::Unspecified` then `self` is updated to the more specific `Type`.
     /// * If `self` is `Type::Subject` and is checked against a `Type::String` then `self` is updated to `Type::String`
-    pub fn check_mut(&mut self, other: Type) -> ControlFlow<(Type, Type)> {
+    pub fn check(mut self, other: Type) -> Result<Type, (Type, Type)> {
         match (self, other) {
-            (this @ Self::Unspecified, other) => {
-                *this = other;
-                ControlFlow::Continue(())
-            }
-
-            (_, Self::Unspecified) => ControlFlow::Continue(()),
-
-            (Self::Subject, Self::Subject) => ControlFlow::Continue(()),
+            (this @ Self::Unspecified, other) => Ok(other),
+            (this, Self::Unspecified) => Ok(this),
+            (Self::Subject, Self::Subject) => Ok(Self::Subject),
 
             // Subjects are strings so there is no reason to reject a type
             // when compared to a string. However, when it happens, we demote
             // a subject to a string.
-            (this @ Self::Subject, Self::String) => {
-                *this = Self::String;
-                ControlFlow::Continue(())
-            }
+            (Self::Subject, Self::String) => Ok(Self::String),
+            (Self::String, Self::Subject) => Ok(Self::String),
 
-            (Self::String, Self::Subject) => ControlFlow::Continue(()),
+            (Self::Number, Self::Number) => Ok(Self::Number),
+            (Self::String, Self::String) => Ok(Self::String),
+            (Self::Bool, Self::Bool) => Ok(Self::Bool),
 
-            (Self::Number, Self::Number) => ControlFlow::Continue(()),
-            (Self::String, Self::String) => ControlFlow::Continue(()),
-            (Self::Bool, Self::Bool) => ControlFlow::Continue(()),
-
-            (Self::Array(a), Self::Array(b)) if a.len() == b.len() => {
+            (Self::Array(mut a), Self::Array(b)) if a.len() == b.len() => {
                 if a.is_empty() {
-                    return ControlFlow::Continue(());
+                    return Ok(Self::Array(a));
                 }
 
-                for (a, b) in a.iter_mut().zip(b.into_iter()) {
-                    a.check_mut(b)?;
+                for (idx, b) in b.into_iter().enumerate() {
+                    a[idx] = a[idx].check(b)?;
                 }
 
-                ControlFlow::Continue(())
+                Ok(Self::Array(a))
             }
 
             (Self::Record(a), Self::Record(b)) if a.len() == b.len() => {
                 if a.is_empty() {
-                    return ControlFlow::Continue(());
+                    return Ok(Self::Record(a));
                 }
 
                 for (ak, bk) in a.keys().zip(b.keys()) {
                     if ak != bk {
-                        return ControlFlow::Break((Self::Record(a.clone()), Self::Record(b)));
+                        return Err((Self::Record(a), Self::Record(b)));
                     }
                 }
 
                 for (av, bv) in a.values_mut().zip(b.into_values()) {
-                    av.check_mut(bv)?;
+                    av.check(bv)?;
                 }
 
                 ControlFlow::Continue(())
@@ -150,14 +141,14 @@ impl Type {
                 },
             ) if a_args.len() == b_args.len() => {
                 if a_args.is_empty() {
-                    return a_res.check_mut(*b_res);
+                    return a_res.check(*b_res);
                 }
 
                 for (a, b) in a_args.iter_mut().zip(b_args.into_iter()) {
-                    a.check_mut(b)?;
+                    a.check(b)?;
                 }
 
-                a_res.check_mut(*b_res)?;
+                a_res.check(*b_res)?;
 
                 ControlFlow::Continue(())
             }

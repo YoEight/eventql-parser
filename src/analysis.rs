@@ -114,14 +114,14 @@ impl<'a> Analysis<'a> {
         mut expect: Type,
     ) -> AnalysisResult<Type> {
         let result = match value {
-            Value::Number(_) => expect.check_mut(Type::Number).map_continue(|_| expect),
-            Value::String(_) => expect.check_mut(Type::String).map_continue(|_| expect),
-            Value::Bool(_) => expect.check_mut(Type::Bool).map_continue(|_| expect),
+            Value::Number(_) => expect.check(Type::Number).map_continue(|_| expect),
+            Value::String(_) => expect.check(Type::String).map_continue(|_| expect),
+            Value::Bool(_) => expect.check(Type::Bool).map_continue(|_| expect),
             Value::Id(id) => {
                 if let Some(tpe) = self.options.default_scope.entries.get(id) {
-                    expect.check_mut(tpe.clone()).map_continue(|_| expect)
+                    expect.check(tpe.clone()).map_continue(|_| expect)
                 } else if let Some(tpe) = self.get_id_type_mut(attrs.scope, id.as_str()) {
-                    tpe.check_mut(expect).map_continue(|_| tpe)
+                    tpe.check(expect).map_continue(|_| tpe)
                 } else {
                     return Err(AnalysisError::VariableUndeclared(
                         attrs.pos.line,
@@ -172,7 +172,7 @@ impl<'a> Analysis<'a> {
                     }
 
                     if let Some(tpe) = self.options.default_scope.entries.get(app.func.as_str()) {
-                        result.check_mut(tpe.clone()).map_continue(|_| Type::App {
+                        result.check(tpe.clone()).map_continue(|_| Type::App {
                             args: arg_types,
                             result,
                         })
