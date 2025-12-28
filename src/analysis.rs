@@ -1,7 +1,11 @@
-use std::{collections::HashMap, ops::ControlFlow};
+use std::{
+    collections::{BTreeMap, HashMap},
+    ops::ControlFlow,
+};
 
 use crate::{
-    Attrs, Expr, Query, Raw, Source, SourceKind, Type, Typed, Value, error::AnalysisError,
+    Access, Attrs, Expr, Query, Raw, Source, SourceKind, Type, Typed, Value, error::AnalysisError,
+    token::Operator,
 };
 
 pub type AnalysisResult<A> = std::result::Result<A, AnalysisError>;
@@ -9,7 +13,7 @@ pub type AnalysisResult<A> = std::result::Result<A, AnalysisError>;
 #[derive(Default)]
 pub struct AnalysisOptions {
     default_scope: Scope,
-    event_type_info: TypeInfo,
+    event_type_info: Type,
 }
 
 pub fn static_analysis(
@@ -28,13 +32,7 @@ pub struct TypeRegistry {
 
 #[derive(Default)]
 pub struct Scope {
-    pub entries: HashMap<String, TypeInfo>,
-}
-
-#[derive(Default, Clone)]
-pub struct TypeInfo {
-    pub tpe: Type,
-    pub props: HashMap<String, TypeInfo>,
+    pub entries: HashMap<String, Type>,
 }
 
 struct Analysis<'a> {
@@ -105,7 +103,7 @@ impl<'a> Analysis<'a> {
         }
     }
 
-    fn analyze_expr(&mut self, expr: &Expr, expect: Type) -> AnalysisResult<()> {
+    fn analyze_expr(&mut self, expr: &Expr, expect: Type) -> AnalysisResult<Type> {
         self.analyze_value(&expr.attrs, &expr.value, expect)
     }
 
@@ -114,25 +112,105 @@ impl<'a> Analysis<'a> {
         attrs: &Attrs,
         value: &Value,
         mut expect: Type,
-    ) -> AnalysisResult<()> {
+    ) -> AnalysisResult<Type> {
         let result = match value {
-            Value::Number(_) => expect.check_mut(Type::Number),
-            Value::String(_) => expect.check_mut(Type::String),
-            Value::Bool(_) => expect.check_mut(Type::Bool),
+            Value::Number(_) => expect.check_mut(Type::Number).map_continue(|_| expect),
+            Value::String(_) => expect.check_mut(Type::String).map_continue(|_| expect),
+            Value::Bool(_) => expect.check_mut(Type::Bool).map_continue(|_| expect),
             Value::Id(id) => {
-                if let Some(info) = self.options.default_scope.entries.get(id) {
-                    expect.check_mut(info.tpe.clone())
+                if let Some(tpe) = self.options.default_scope.entries.get(id) {
+                    expect.check_mut(tpe.clone()).map_continue(|_| expect)
+                } else if let Some(tpe) = self.get_id_type_mut(attrs.scope, id.as_str()) {
+                    tpe.check_mut(expect).map_continue(|_| tpe)
                 } else {
-                    todo!()
+                    return Err(AnalysisError::VariableUndeclared(
+                        attrs.pos.line,
+                        attrs.pos.col,
+                        id.to_owned(),
+                    ));
                 }
             }
-            Value::Array(exprs) => todo!(),
-            Value::Record(fields) => todo!(),
-            Value::Access(access) => todo!(),
-            Value::App(app) => todo!(),
-            Value::Binary(binary) => todo!(),
+            Value::Array(exprs) => match expect {
+                Type::Array(types) if exprs.len() == types.len() => {
+                    let mut res_types = vec![];
+                    for (expr, expect) in exprs.iter().zip(types.into_iter()) {
+                        res_types.push(self.analyze_expr(expr, expect)?);
+                    }
+
+                    ControlFlow::Continue(Type::Array(res_types))
+                }
+
+                expect => ControlFlow::Break((expect, self.project_type(attrs.scope, value))),
+            },
+            Value::Record(fields) => match expect {
+                Type::Record(mut types) if fields.len() == types.len() => {
+                    for field in fields {
+                        if let Some(tpe) = types.remove(field.name.as_str()) {
+                            types.insert(field.name.clone(), self.analyze_expr(&field.value, tpe)?);
+                        } else {
+                            return Err(AnalysisError::FieldUndeclared(
+                                attrs.pos.line,
+                                attrs.pos.col,
+                                field.name.clone(),
+                            ));
+                        }
+                    }
+
+                    ControlFlow::Continue(Type::Record(types))
+                }
+
+                expect => ControlFlow::Break((expect, self.project_type(attrs.scope, value))),
+            },
+            Value::Access(access) => {
+                ControlFlow::Continue(self.analyze_access(attrs.scope, access)?)
+            }
+            Value::App(app) => match expect {
+                Type::App { args, mut result } if app.args.len() == args.len() => {
+                    let mut arg_types = Vec::with_capacity(args.capacity());
+                    for (idx, arg) in args.into_iter().enumerate() {
+                        arg_types.push(self.analyze_expr(&app.args[idx], arg)?);
+                    }
+
+                    if let Some(tpe) = self.options.default_scope.entries.get(app.func.as_str()) {
+                        result.check_mut(tpe.clone()).map_continue(|_| Type::App {
+                            args: arg_types,
+                            result,
+                        })
+                    } else {
+                        return Err(AnalysisError::FuncUndeclared(
+                            attrs.pos.line,
+                            attrs.pos.col,
+                            app.func.clone(),
+                        ));
+                    }
+                }
+
+                expect => ControlFlow::Break((expect, self.project_type(attrs.scope, value))),
+            },
+            Value::Binary(binary) => {
+                let (res, lhs_expect, rhs_expect) = match binary.operator {
+                    Operator::Add => (Type::Number, Type::Number, Type::Number),
+                    Operator::Sub => (Type::Number, Type::Number, Type::Number),
+                    Operator::Mul => (Type::Number, Type::Number, Type::Number),
+                    Operator::Div => (Type::Number, Type::Number, Type::Number),
+                    Operator::Eq => (Type::Bool, Type::Unspecified, Type::Unspecified),
+                    Operator::Neq => todo!(),
+                    Operator::Lt => todo!(),
+                    Operator::Lte => todo!(),
+                    Operator::Gt => todo!(),
+                    Operator::Gte => todo!(),
+                    Operator::And => todo!(),
+                    Operator::Or => todo!(),
+                    Operator::Xor => todo!(),
+                    Operator::Not => todo!(),
+                };
+                todo!()
+            }
             Value::Unary(unary) => todo!(),
-            Value::Group(expr) => todo!(),
+            Value::Group(expr) => {
+                self.analyze_expr(expr.as_ref(), expect)?;
+                ControlFlow::Continue(())
+            }
         };
 
         if let ControlFlow::Break((expect, actual)) = result {
@@ -147,11 +225,20 @@ impl<'a> Analysis<'a> {
         todo!()
     }
 
-    fn get_id_type_info_mut(&mut self, id: &str) -> Option<&mut Type> {
+    fn analyze_access(&mut self, scope_id: u64, access: &Access) -> AnalysisResult<Type> {
         todo!()
     }
 
-    fn projection_type(&self, query: &Query<Typed>) -> TypeInfo {
+    fn get_id_type_mut(&mut self, scope_id: u64, id: &str) -> Option<&mut Type> {
+        let scope = self.registry.scopes.entry(scope_id).or_default();
+        scope.entries.get_mut(id)
+    }
+
+    fn projection_type(&self, query: &Query<Typed>) -> Type {
+        todo!()
+    }
+
+    fn project_type(&self, scope: u64, value: &Value) -> Type {
         todo!()
     }
 }

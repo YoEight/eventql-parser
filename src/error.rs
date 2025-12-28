@@ -95,6 +95,15 @@ pub enum AnalysisError {
     #[error("{0}:{1}: binding '{2}' already exists")]
     BindingAlreadyExists(u32, u32, String),
 
+    #[error("{0}:{1}: variable '{2}' is undeclared")]
+    VariableUndeclared(u32, u32, String),
+
     #[error("{0}:{1}: type mismatch: expected {2:?} but got {3:?} ")]
     TypeMismatch(u32, u32, Type, Type),
+
+    #[error("{0}:{1}: record field '{2:?}' is undeclared ")]
+    FieldUndeclared(u32, u32, String),
+
+    #[error("{0}:{1}: function '{2:?}' is undeclared ")]
+    FuncUndeclared(u32, u32, String),
 }
