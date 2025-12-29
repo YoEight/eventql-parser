@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, btree_map::Entry},
     mem,
     ops::ControlFlow,
 };
@@ -265,6 +265,23 @@ impl<'a> Analysis<'a> {
         access: &Access,
         expect: Type,
     ) -> AnalysisResult<Type> {
+        struct State<A, B> {
+            depth: u8,
+            /// When true means we are into dynamically type object.
+            dynamic: bool,
+            definition: Def<A, B>,
+        }
+
+        impl<A, B> State<A, B> {
+            fn new(definition: Def<A, B>) -> Self {
+                Self {
+                    depth: 0,
+                    dynamic: false,
+                    definition,
+                }
+            }
+        }
+
         enum Def<A, B> {
             User(A),
             System(B),
@@ -275,11 +292,11 @@ impl<'a> Analysis<'a> {
             sys: &'a AnalysisOptions,
             attrs: &'a Attrs,
             value: &'a Value,
-        ) -> AnalysisResult<Def<&'a mut Type, Type>> {
+        ) -> AnalysisResult<State<&'a mut Type, Type>> {
             match value {
                 Value::Id(id) => {
                     if let Some(tpe) = sys.default_scope.entries.get(id.as_str()) {
-                        Ok(Def::System(tpe.clone()))
+                        Ok(State::new(Def::System(tpe.clone())))
                     } else if let Some(tpe) = reg
                         .scopes
                         .entry(attrs.scope)
@@ -287,7 +304,7 @@ impl<'a> Analysis<'a> {
                         .entries
                         .get_mut(id.as_str())
                     {
-                        Ok(Def::User(tpe))
+                        Ok(State::new(Def::User(tpe)))
                     } else {
                         Err(AnalysisError::VariableUndeclared(
                             attrs.pos.line,
@@ -296,20 +313,77 @@ impl<'a> Analysis<'a> {
                         ))
                     }
                 }
+
                 Value::Access(access) => {
-                    match go(reg, sys, &access.target.attrs, &access.target.value)? {
+                    let mut state = go(reg, sys, &access.target.attrs, &access.target.value)?;
+
+                    // TODO - we should consider make that field and depth configurable.
+                    let is_data_field = state.depth == 0 && access.field == "data";
+
+                    // TODO - we should consider make that behavior configurable.
+                    // the `data` property is where the JSON payload is located, which means
+                    // we should be lax if a property is not defined yet.
+                    if !state.dynamic && is_data_field {
+                        state.dynamic = true;
+                    }
+
+                    match state.definition {
                         Def::User(tpe) => {
-                            if let Type::Record(fields) = tpe
-                                && let Some(tpe) = fields.get_mut(access.field.as_str())
-                            {
-                                Ok(Def::User(tpe))
-                            } else {
-                                Err(AnalysisError::FieldUndeclared(
-                                    attrs.pos.line,
-                                    attrs.pos.col,
-                                    access.field.clone(),
-                                ))
+                            if let Type::Record(fields) = tpe {
+                                match fields.entry(access.field.clone()) {
+                                    Entry::Vacant(entry) => {
+                                        if state.dynamic || is_data_field {
+                                            return Ok(State {
+                                                depth: state.depth + 1,
+                                                definition: Def::User(
+                                                    entry.insert(Type::Unspecified),
+                                                ),
+                                                ..state
+                                            });
+                                        }
+
+                                        return Err(AnalysisError::FieldUndeclared(
+                                            attrs.pos.line,
+                                            attrs.pos.col,
+                                            access.field.clone(),
+                                        ));
+                                    }
+
+                                    Entry::Occupied(entry) => {
+                                        return Ok(State {
+                                            depth: state.depth + 1,
+                                            definition: Def::User(entry.into_mut()),
+                                            ..state
+                                        });
+                                    }
+                                }
                             }
+
+                            // Err(AnalysisError::ExpectRecord(
+                            //     attrs.pos.line,
+                            //     attrs.pos.col,
+                            //     tpe.clone(),
+                            // ))
+                            // if let Type::Record(fields) = tpe
+                            //     && let Some(tpe) = fields.get_mut(access.field.as_str())
+                            // {
+                            //     Ok(State {
+                            //         depth: state.depth + 1,
+                            //         definition: Def::User(tpe),
+                            //         ..state
+                            //     })
+                            // } else {
+                            //     if state.dynamic || is_data_field {
+                            //         todo!()
+                            //     } else {
+                            //         Err(AnalysisError::FieldUndeclared(
+                            //             attrs.pos.line,
+                            //             attrs.pos.col,
+                            //             access.field.clone(),
+                            //         ))
+                            //     }
+                            // }
+                            todo!()
                         }
                         Def::System(_) => todo!(),
                     }
@@ -318,12 +392,14 @@ impl<'a> Analysis<'a> {
             }
         }
 
-        match go(
+        let state = go(
             &mut self.registry,
             &self.options,
             &access.target.attrs,
             &access.target.value,
-        )? {
+        )?;
+
+        match state.definition {
             Def::User(_) => todo!(),
             Def::System(_) => todo!(),
         }

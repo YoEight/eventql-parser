@@ -106,4 +106,7 @@ pub enum AnalysisError {
 
     #[error("{0}:{1}: function '{2:?}' is undeclared ")]
     FuncUndeclared(u32, u32, String),
+
+    #[error("{0}:{1}: expected record but got {2:?}")]
+    ExpectRecord(u32, u32, Type),
 }
