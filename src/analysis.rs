@@ -359,32 +359,13 @@ impl<'a> Analysis<'a> {
                                 }
                             }
 
-                            // Err(AnalysisError::ExpectRecord(
-                            //     attrs.pos.line,
-                            //     attrs.pos.col,
-                            //     tpe.clone(),
-                            // ))
-                            // if let Type::Record(fields) = tpe
-                            //     && let Some(tpe) = fields.get_mut(access.field.as_str())
-                            // {
-                            //     Ok(State {
-                            //         depth: state.depth + 1,
-                            //         definition: Def::User(tpe),
-                            //         ..state
-                            //     })
-                            // } else {
-                            //     if state.dynamic || is_data_field {
-                            //         todo!()
-                            //     } else {
-                            //         Err(AnalysisError::FieldUndeclared(
-                            //             attrs.pos.line,
-                            //             attrs.pos.col,
-                            //             access.field.clone(),
-                            //         ))
-                            //     }
-                            // }
-                            todo!()
+                            Err(AnalysisError::ExpectRecord(
+                                attrs.pos.line,
+                                attrs.pos.col,
+                                tpe.clone(),
+                            ))
                         }
+
                         Def::System(_) => todo!(),
                     }
                 }
