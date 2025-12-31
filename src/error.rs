@@ -109,4 +109,10 @@ pub enum AnalysisError {
 
     #[error("{0}:{1}: expected record but got {2:?}")]
     ExpectRecord(u32, u32, Type),
+
+    #[error("{0}:{1}: expected a field")]
+    ExpectFieldLiteral(u32, u32),
+
+    #[error("{0}:{1}: expected a record")]
+    ExpectRecordLiteral(u32, u32),
 }

@@ -1,7 +1,6 @@
 use std::{
-    collections::{BTreeMap, HashMap, btree_map::Entry},
+    collections::{HashMap, btree_map::Entry},
     mem,
-    ops::ControlFlow,
 };
 
 use crate::{
@@ -62,8 +61,11 @@ impl<'a> Analysis<'a> {
         }
 
         if let Some(group_by) = &query.group_by {
-            if !matches!(&group_by.expr.value, Value::Access(_) | Value::Id(_)) {
-                todo!()
+            if !matches!(&group_by.expr.value, Value::Access(_)) {
+                return Err(AnalysisError::ExpectFieldLiteral(
+                    group_by.expr.attrs.pos.line,
+                    group_by.expr.attrs.pos.col,
+                ));
             }
 
             self.analyze_expr(&group_by.expr, Type::Unspecified)?;
@@ -74,12 +76,31 @@ impl<'a> Analysis<'a> {
         }
 
         if let Some(order_by) = &query.order_by {
-            // TODO - make sure that the expr is a field.
+            if !matches!(&order_by.expr.value, Value::Access(_)) {
+                return Err(AnalysisError::ExpectFieldLiteral(
+                    order_by.expr.attrs.pos.line,
+                    order_by.expr.attrs.pos.col,
+                ));
+            }
             self.analyze_expr(&order_by.expr, Type::Unspecified)?;
         }
 
-        // TODO - make sure that the expr is a field.
-        self.analyze_expr(&query.projection, Type::Unspecified)?;
+        if !matches!(&query.projection.value, Value::Record(_) | Value::Id(_)) {
+            return Err(AnalysisError::ExpectRecordLiteral(
+                query.projection.attrs.pos.line,
+                query.projection.attrs.pos.col,
+            ));
+        }
+
+        let tpe = self.analyze_expr(&query.projection, Type::Unspecified)?;
+
+        if !matches!(&tpe, Type::Record(f) if !f.is_empty()) {
+            return Err(AnalysisError::ExpectRecord(
+                query.projection.attrs.pos.line,
+                query.projection.attrs.pos.col,
+                tpe,
+            ));
+        }
 
         Ok(Query {
             scope,
