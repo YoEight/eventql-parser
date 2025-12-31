@@ -51,15 +51,48 @@ impl<'a> Analysis<'a> {
 
     fn analyze_query(&mut self, query: Query<Raw>) -> AnalysisResult<Query<Typed>> {
         let scope = query.scope;
-        let mut typed_sources = Vec::with_capacity(query.sources.len());
+        let mut sources = Vec::with_capacity(query.sources.len());
 
         for source in query.sources {
-            typed_sources.push(self.analyze_source(scope, source)?);
+            sources.push(self.analyze_source(scope, source)?);
         }
 
-        if let Some(expr) = &query.predicate {}
+        if let Some(expr) = &query.predicate {
+            self.analyze_expr(expr, Type::Bool)?;
+        }
 
-        todo!()
+        if let Some(group_by) = &query.group_by {
+            if !matches!(&group_by.expr.value, Value::Access(_) | Value::Id(_)) {
+                todo!()
+            }
+
+            self.analyze_expr(&group_by.expr, Type::Unspecified)?;
+
+            if let Some(expr) = &group_by.predicate {
+                self.analyze_expr(expr, Type::Bool)?;
+            }
+        }
+
+        if let Some(order_by) = &query.order_by {
+            // TODO - make sure that the expr is a field.
+            self.analyze_expr(&order_by.expr, Type::Unspecified)?;
+        }
+
+        // TODO - make sure that the expr is a field.
+        self.analyze_expr(&query.projection, Type::Unspecified)?;
+
+        Ok(Query {
+            scope,
+            attrs: query.attrs,
+            sources,
+            predicate: query.predicate,
+            group_by: query.group_by,
+            order_by: query.order_by,
+            limit: query.limit,
+            projection: query.projection,
+            distinct: query.distinct,
+            _marker: std::marker::PhantomData,
+        })
     }
 
     fn analyze_source(
@@ -254,9 +287,7 @@ impl<'a> Analysis<'a> {
             Value::Group(expr) => Ok(self.analyze_expr(expr.as_ref(), expect)?),
         };
 
-        result.map_err(|(expect, actual)| {
-            AnalysisError::TypeMismatch(attrs.pos.line, attrs.pos.col, expect, actual)
-        })
+        result.map_err(type_mismatch_err(attrs))
     }
 
     fn analyze_access(
@@ -292,11 +323,11 @@ impl<'a> Analysis<'a> {
             sys: &'a AnalysisOptions,
             attrs: &'a Attrs,
             value: &'a Value,
-        ) -> AnalysisResult<State<&'a mut Type, Type>> {
+        ) -> AnalysisResult<State<&'a mut Type, &'a Type>> {
             match value {
                 Value::Id(id) => {
                     if let Some(tpe) = sys.default_scope.entries.get(id.as_str()) {
-                        Ok(State::new(Def::System(tpe.clone())))
+                        Ok(State::new(Def::System(tpe)))
                     } else if let Some(tpe) = reg
                         .scopes
                         .entry(attrs.scope)
@@ -366,7 +397,29 @@ impl<'a> Analysis<'a> {
                             ))
                         }
 
-                        Def::System(_) => todo!(),
+                        Def::System(tpe) => {
+                            if let Type::Record(fields) = tpe {
+                                if let Some(field) = fields.get(access.field.as_str()) {
+                                    return Ok(State {
+                                        depth: state.depth + 1,
+                                        definition: Def::System(field),
+                                        ..state
+                                    });
+                                }
+
+                                return Err(AnalysisError::FieldUndeclared(
+                                    attrs.pos.line,
+                                    attrs.pos.col,
+                                    access.field.clone(),
+                                ));
+                            }
+
+                            Err(AnalysisError::ExpectRecord(
+                                attrs.pos.line,
+                                attrs.pos.col,
+                                tpe.clone(),
+                            ))
+                        }
                     }
                 }
                 _ => unreachable!(),
@@ -381,8 +434,14 @@ impl<'a> Analysis<'a> {
         )?;
 
         match state.definition {
-            Def::User(_) => todo!(),
-            Def::System(_) => todo!(),
+            Def::User(tpe) => {
+                let tmp = mem::take(tpe);
+                *tpe = tmp.check(expect).map_err(type_mismatch_err(attrs))?;
+
+                Ok(tpe.clone())
+            }
+
+            Def::System(tpe) => tpe.clone().check(expect).map_err(type_mismatch_err(attrs)),
         }
     }
 
@@ -398,4 +457,8 @@ impl<'a> Analysis<'a> {
     fn project_type(&self, scope: u64, value: &Value) -> Type {
         todo!()
     }
+}
+
+fn type_mismatch_err(attrs: &Attrs) -> impl FnOnce((Type, Type)) -> AnalysisError {
+    |(expect, actual)| AnalysisError::TypeMismatch(attrs.pos.line, attrs.pos.col, expect, actual)
 }
