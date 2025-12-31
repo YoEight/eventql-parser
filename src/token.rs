@@ -12,7 +12,7 @@
 //! - [`Symbol`] - Structural symbols (parentheses, brackets, etc.)
 
 use nom_locate::LocatedSpan;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
 /// Symbol type representing the category and value of a token.
@@ -121,7 +121,7 @@ impl Display for Operator {
 ///
 /// These symbols define the structure of expressions and queries,
 /// such as parentheses for grouping, brackets for arrays, and braces for records.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Symbol {
     /// Opening parenthesis `(`
     OpenParen,

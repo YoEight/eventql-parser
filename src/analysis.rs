@@ -365,7 +365,6 @@ impl<'a> Analysis<'a> {
                         ))
                     }
                 }
-
                 Value::Access(access) => {
                     let mut state = go(reg, sys, &access.target.attrs, &access.target.value)?;
 
@@ -443,7 +442,15 @@ impl<'a> Analysis<'a> {
                         }
                     }
                 }
-                _ => unreachable!(),
+                Value::Number(_)
+                | Value::String(_)
+                | Value::Bool(_)
+                | Value::Array(_)
+                | Value::Record(_)
+                | Value::App(_)
+                | Value::Binary(_)
+                | Value::Unary(_)
+                | Value::Group(_) => unreachable!(),
             }
         }
 
@@ -472,11 +479,93 @@ impl<'a> Analysis<'a> {
     }
 
     fn projection_type(&self, query: &Query<Typed>) -> Type {
-        todo!()
+        self.project_type(query.scope, &query.projection.value)
     }
 
     fn project_type(&self, scope: u64, value: &Value) -> Type {
-        todo!()
+        match value {
+            Value::Number(_) => Type::Number,
+            Value::String(_) => Type::String,
+            Value::Bool(_) => Type::Bool,
+            Value::Id(id) => {
+                if let Some(tpe) = self.options.default_scope.entries.get(id) {
+                    tpe.clone()
+                } else if let Some(tpe) = self
+                    .registry
+                    .scopes
+                    .get(&scope)
+                    .and_then(|s| s.entries.get(id))
+                {
+                    tpe.clone()
+                } else {
+                    Type::Unspecified
+                }
+            }
+            Value::Array(exprs) => Type::Array(
+                exprs
+                    .iter()
+                    .map(|v| self.project_type(scope, &v.value))
+                    .collect(),
+            ),
+            Value::Record(fields) => Type::Record(
+                fields
+                    .iter()
+                    .map(|field| {
+                        (
+                            field.name.clone(),
+                            self.project_type(scope, &field.value.value),
+                        )
+                    })
+                    .collect(),
+            ),
+            Value::Access(access) => {
+                let tpe = self.project_type(scope, &access.target.value);
+                if let Type::Record(fields) = tpe {
+                    fields
+                        .get(access.field.as_str())
+                        .cloned()
+                        .unwrap_or_default()
+                } else {
+                    Type::Unspecified
+                }
+            }
+            Value::App(app) => self
+                .options
+                .default_scope
+                .entries
+                .get(app.func.as_str())
+                .cloned()
+                .unwrap_or_default(),
+            Value::Binary(binary) => match binary.operator {
+                Operator::Add | Operator::Sub | Operator::Mul | Operator::Div => Type::Number,
+                Operator::Eq
+                | Operator::Neq
+                | Operator::Lt
+                | Operator::Lte
+                | Operator::Gt
+                | Operator::Gte
+                | Operator::And
+                | Operator::Or
+                | Operator::Xor
+                | Operator::Not => Type::Bool,
+            },
+            Value::Unary(unary) => match unary.operator {
+                Operator::Add | Operator::Sub => Type::Number,
+                Operator::Mul
+                | Operator::Div
+                | Operator::Eq
+                | Operator::Neq
+                | Operator::Lt
+                | Operator::Lte
+                | Operator::Gt
+                | Operator::Gte
+                | Operator::And
+                | Operator::Or
+                | Operator::Xor
+                | Operator::Not => unreachable!(),
+            },
+            Value::Group(expr) => self.project_type(scope, &expr.value),
+        }
     }
 }
 

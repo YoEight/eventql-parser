@@ -5,13 +5,14 @@
 //! (line and column numbers) to help diagnose issues in query strings.
 
 use crate::{Type, token::Symbol};
+use serde::Serialize;
 use thiserror::Error;
 
 /// Top-level error type for the EventQL parser.
 ///
 /// This enum wraps both lexer and parser errors, providing a unified
 /// error type for the entire parsing pipeline.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Serialize)]
 pub enum Error {
     /// Error during lexical analysis (tokenization).
     #[error(transparent)]
@@ -30,7 +31,7 @@ pub enum Error {
 ///
 /// These errors are produced by the tokenizer when the input string
 /// contains invalid characters or ends unexpectedly.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Serialize)]
 pub enum LexerError {
     /// The input ended unexpectedly while parsing a token.
     ///
@@ -50,7 +51,7 @@ pub enum LexerError {
 ///
 /// These errors are produced by the parser when the token sequence
 /// does not match the expected grammar of EventQL.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Serialize)]
 pub enum ParserError {
     /// Expected an identifier but found something else.
     ///
@@ -90,7 +91,7 @@ pub enum ParserError {
     UnexpectedEof,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Serialize)]
 pub enum AnalysisError {
     #[error("{0}:{1}: binding '{2}' already exists")]
     BindingAlreadyExists(u32, u32, String),
