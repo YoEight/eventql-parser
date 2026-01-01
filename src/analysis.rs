@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, btree_map::Entry},
+    collections::{BTreeMap, HashMap, btree_map::Entry},
     mem,
 };
 
@@ -10,10 +10,32 @@ use crate::{
 
 pub type AnalysisResult<A> = std::result::Result<A, AnalysisError>;
 
-#[derive(Default)]
 pub struct AnalysisOptions {
     default_scope: Scope,
     event_type_info: Type,
+}
+
+impl Default for AnalysisOptions {
+    fn default() -> Self {
+        Self {
+            default_scope: Default::default(),
+            event_type_info: Type::Record(BTreeMap::from([
+                ("specversion".to_owned(), Type::String),
+                ("id".to_owned(), Type::String),
+                ("time".to_owned(), Type::String),
+                ("source".to_owned(), Type::String),
+                ("subject".to_owned(), Type::Subject),
+                ("type".to_owned(), Type::String),
+                ("datacontenttype".to_owned(), Type::String),
+                ("data".to_owned(), Type::Unspecified),
+                ("predecessorhash".to_owned(), Type::String),
+                ("hash".to_owned(), Type::String),
+                ("traceparent".to_owned(), Type::String),
+                ("tracestate".to_owned(), Type::String),
+                ("signature".to_owned(), Type::String),
+            ])),
+        }
+    }
 }
 
 pub fn static_analysis(
