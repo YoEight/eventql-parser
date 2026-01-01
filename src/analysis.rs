@@ -512,82 +512,104 @@ impl<'a> Analysis<'a> {
                 }
             }
 
-            Value::Array(exprs) => match expect {
-                Type::Array(mut types) if exprs.len() == types.len() => {
-                    for (expr, expect) in exprs.iter().zip(types.iter_mut()) {
-                        let tmp = mem::take(expect);
-                        *expect = self.analyze_expr(expr, tmp)?;
-                    }
-
-                    Ok(Type::Array(types))
+            this @ Value::Array(exprs) => {
+                if matches!(expect, Type::Unspecified) {
+                    return Ok(self.project_type(this));
                 }
 
-                expect => Err(AnalysisError::TypeMismatch(
-                    attrs.pos.line,
-                    attrs.pos.col,
-                    expect,
-                    self.project_type(value),
-                )),
-            },
-
-            Value::Record(fields) => match expect {
-                Type::Record(mut types) if fields.len() == types.len() => {
-                    for field in fields {
-                        if let Some(tpe) = types.remove(field.name.as_str()) {
-                            types.insert(field.name.clone(), self.analyze_expr(&field.value, tpe)?);
-                        } else {
-                            return Err(AnalysisError::FieldUndeclared(
-                                attrs.pos.line,
-                                attrs.pos.col,
-                                field.name.clone(),
-                            ));
+                match expect {
+                    Type::Array(mut types) if exprs.len() == types.len() => {
+                        for (expr, expect) in exprs.iter().zip(types.iter_mut()) {
+                            let tmp = mem::take(expect);
+                            *expect = self.analyze_expr(expr, tmp)?;
                         }
+
+                        Ok(Type::Array(types))
                     }
 
-                    Ok(Type::Record(types))
+                    expect => Err(AnalysisError::TypeMismatch(
+                        attrs.pos.line,
+                        attrs.pos.col,
+                        expect,
+                        self.project_type(value),
+                    )),
+                }
+            }
+
+            this @ Value::Record(fields) => {
+                if matches!(expect, Type::Unspecified) {
+                    return Ok(self.project_type(this));
                 }
 
-                expect => Err(AnalysisError::TypeMismatch(
-                    attrs.pos.line,
-                    attrs.pos.col,
-                    expect,
-                    self.project_type(value),
-                )),
-            },
+                match expect {
+                    Type::Record(mut types) if fields.len() == types.len() => {
+                        for field in fields {
+                            if let Some(tpe) = types.remove(field.name.as_str()) {
+                                types.insert(
+                                    field.name.clone(),
+                                    self.analyze_expr(&field.value, tpe)?,
+                                );
+                            } else {
+                                return Err(AnalysisError::FieldUndeclared(
+                                    attrs.pos.line,
+                                    attrs.pos.col,
+                                    field.name.clone(),
+                                ));
+                            }
+                        }
+
+                        Ok(Type::Record(types))
+                    }
+
+                    expect => Err(AnalysisError::TypeMismatch(
+                        attrs.pos.line,
+                        attrs.pos.col,
+                        expect,
+                        self.project_type(value),
+                    )),
+                }
+            }
 
             this @ Value::Access(_) => Ok(self.analyze_access(attrs, this, expect)?),
 
-            Value::App(app) => match expect {
-                Type::App { args, mut result } if app.args.len() == args.len() => {
-                    let mut arg_types = Vec::with_capacity(args.capacity());
-                    for (arg, tpe) in app.args.iter().zip(args.into_iter()) {
-                        arg_types.push(self.analyze_expr(arg, tpe)?);
-                    }
-
-                    if let Some(tpe) = self.options.default_scope.entries.get(app.func.as_str()) {
-                        let tmp = mem::take(result.as_mut());
-                        *result = tmp.check(attrs, tpe.clone())?;
-
-                        Ok(Type::App {
-                            args: arg_types,
-                            result,
-                        })
-                    } else {
-                        Err(AnalysisError::FuncUndeclared(
-                            attrs.pos.line,
-                            attrs.pos.col,
-                            app.func.clone(),
-                        ))
-                    }
+            this @ Value::App(app) => {
+                if matches!(expect, Type::Unspecified) {
+                    return Ok(self.project_type(this));
                 }
 
-                expect => Err(AnalysisError::TypeMismatch(
-                    attrs.pos.line,
-                    attrs.pos.col,
-                    expect,
-                    self.project_type(value),
-                )),
-            },
+                match expect {
+                    Type::App { args, mut result } if app.args.len() == args.len() => {
+                        let mut arg_types = Vec::with_capacity(args.capacity());
+                        for (arg, tpe) in app.args.iter().zip(args.into_iter()) {
+                            arg_types.push(self.analyze_expr(arg, tpe)?);
+                        }
+
+                        if let Some(tpe) = self.options.default_scope.entries.get(app.func.as_str())
+                        {
+                            let tmp = mem::take(result.as_mut());
+                            *result = tmp.check(attrs, tpe.clone())?;
+
+                            Ok(Type::App {
+                                args: arg_types,
+                                result,
+                            })
+                        } else {
+                            Err(AnalysisError::FuncUndeclared(
+                                attrs.pos.line,
+                                attrs.pos.col,
+                                app.func.clone(),
+                            ))
+                        }
+                    }
+
+                    expect => Err(AnalysisError::TypeMismatch(
+                        attrs.pos.line,
+                        attrs.pos.col,
+                        expect,
+                        self.project_type(value),
+                    )),
+                }
+            }
 
             Value::Binary(binary) => match binary.operator {
                 Operator::Add | Operator::Sub | Operator::Mul | Operator::Div => {

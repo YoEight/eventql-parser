@@ -1,0 +1,159 @@
+---
+source: src/tests/analysis.rs
+expression: "query.run_static_analysis(&Default::default())"
+---
+Ok:
+  attrs:
+    pos:
+      line: 1
+      col: 1
+  sources:
+    - binding:
+        name: e
+        pos:
+          line: 1
+          col: 6
+      kind:
+        Subquery:
+          attrs:
+            pos:
+              line: 2
+              col: 3
+          sources:
+            - binding:
+                name: e
+                pos:
+                  line: 2
+                  col: 8
+              kind:
+                Name: events
+          predicate:
+            attrs:
+              pos:
+                line: 3
+                col: 9
+            value:
+              Binary:
+                lhs:
+                  attrs:
+                    pos:
+                      line: 3
+                      col: 9
+                  value:
+                    Access:
+                      target:
+                        attrs:
+                          pos:
+                            line: 3
+                            col: 9
+                        value:
+                          Id: e
+                      field: type
+                operator: Eq
+                rhs:
+                  attrs:
+                    pos:
+                      line: 3
+                      col: 19
+                  value:
+                    String: io.eventsourcingdb.library.book-acquired
+          group_by: ~
+          order_by: ~
+          limit: ~
+          projection:
+            attrs:
+              pos:
+                line: 4
+                col: 16
+            value:
+              Record:
+                - name: orderId
+                  value:
+                    attrs:
+                      pos:
+                        line: 4
+                        col: 27
+                    value:
+                      Access:
+                        target:
+                          attrs:
+                            pos:
+                              line: 4
+                              col: 27
+                          value:
+                            Access:
+                              target:
+                                attrs:
+                                  pos:
+                                    line: 4
+                                    col: 27
+                                value:
+                                  Id: e
+                              field: data
+                        field: foobar
+                - name: value
+                  value:
+                    attrs:
+                      pos:
+                        line: 4
+                        col: 49
+                    value:
+                      Access:
+                        target:
+                          attrs:
+                            pos:
+                              line: 4
+                              col: 49
+                          value:
+                            Access:
+                              target:
+                                attrs:
+                                  pos:
+                                    line: 4
+                                    col: 49
+                                value:
+                                  Id: e
+                              field: data
+                        field: total
+          distinct: false
+  predicate:
+    attrs:
+      pos:
+        line: 6
+        col: 7
+    value:
+      Binary:
+        lhs:
+          attrs:
+            pos:
+              line: 6
+              col: 7
+          value:
+            Access:
+              target:
+                attrs:
+                  pos:
+                    line: 6
+                    col: 7
+                value:
+                  Id: e
+              field: value
+        operator: Gt
+        rhs:
+          attrs:
+            pos:
+              line: 6
+              col: 17
+          value:
+            Number: 100
+  group_by: ~
+  order_by: ~
+  limit: ~
+  projection:
+    attrs:
+      pos:
+        line: 7
+        col: 14
+    value:
+      Id: e
+  distinct: false
