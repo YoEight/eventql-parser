@@ -15,7 +15,7 @@ use std::{collections::BTreeMap, marker::PhantomData, mem};
 
 use crate::{
     analysis::{AnalysisOptions, static_analysis},
-    error::Error,
+    error::{AnalysisError, Error},
     token::{Operator, Token},
 };
 use serde::Serialize;
@@ -79,12 +79,9 @@ pub enum Type {
 impl Type {
     /// Checks if two types are the same.
     ///
-    /// Returns `ControlFlow::Continue` when typechecking is successful.
-    /// Returns `ControlFlow::Break` when typechecking failed along with the types that failed.
-    ///
     /// * If `self` is `Type::Unspecified` then `self` is updated to the more specific `Type`.
     /// * If `self` is `Type::Subject` and is checked against a `Type::String` then `self` is updated to `Type::String`
-    pub fn check(self, other: Type) -> Result<Type, (Type, Type)> {
+    pub fn check(self, attrs: &Attrs, other: Type) -> Result<Type, AnalysisError> {
         match (self, other) {
             (Self::Unspecified, other) => Ok(other),
             (this, Self::Unspecified) => Ok(this),
@@ -107,7 +104,7 @@ impl Type {
 
                 for (a, b) in a.iter_mut().zip(b.into_iter()) {
                     let tmp = mem::take(a);
-                    *a = tmp.check(b)?;
+                    *a = tmp.check(attrs, b)?;
                 }
 
                 Ok(Self::Array(a))
@@ -120,13 +117,18 @@ impl Type {
 
                 for (ak, bk) in a.keys().zip(b.keys()) {
                     if ak != bk {
-                        return Err((Self::Record(a), Self::Record(b)));
+                        return Err(AnalysisError::TypeMismatch(
+                            attrs.pos.line,
+                            attrs.pos.col,
+                            Self::Record(a),
+                            Self::Record(b),
+                        ));
                     }
                 }
 
                 for (av, bv) in a.values_mut().zip(b.into_values()) {
                     let a = mem::take(av);
-                    *av = a.check(bv)?;
+                    *av = a.check(attrs, bv)?;
                 }
 
                 Ok(Self::Record(a))
@@ -144,7 +146,7 @@ impl Type {
             ) if a_args.len() == b_args.len() => {
                 if a_args.is_empty() {
                     let tmp = mem::take(a_res.as_mut());
-                    *a_res = tmp.check(*b_res)?;
+                    *a_res = tmp.check(attrs, *b_res)?;
                     return Ok(Self::App {
                         args: a_args,
                         result: a_res,
@@ -153,11 +155,11 @@ impl Type {
 
                 for (a, b) in a_args.iter_mut().zip(b_args.into_iter()) {
                     let tmp = mem::take(a);
-                    *a = tmp.check(b)?;
+                    *a = tmp.check(attrs, b)?;
                 }
 
                 let tmp = mem::take(a_res.as_mut());
-                *a_res = tmp.check(*b_res)?;
+                *a_res = tmp.check(attrs, *b_res)?;
 
                 Ok(Self::App {
                     args: a_args,
@@ -165,7 +167,12 @@ impl Type {
                 })
             }
 
-            (this, other) => Err((this, other)),
+            (this, other) => Err(AnalysisError::TypeMismatch(
+                attrs.pos.line,
+                attrs.pos.col,
+                this,
+                other,
+            )),
         }
     }
 }

@@ -185,20 +185,19 @@ impl<'a> Analysis<'a> {
         value: &Value,
         expect: Type,
     ) -> AnalysisResult<Type> {
-        let result = match value {
-            Value::Number(_) => expect.check(Type::Number),
-            Value::String(_) => expect.check(Type::String),
-            Value::Bool(_) => expect.check(Type::Bool),
+        match value {
+            Value::Number(_) => expect.check(attrs, Type::Number),
+            Value::String(_) => expect.check(attrs, Type::String),
+            Value::Bool(_) => expect.check(attrs, Type::Bool),
 
             Value::Id(id) => {
                 if let Some(tpe) = self.options.default_scope.entries.get(id) {
-                    expect.check(tpe.clone())
+                    expect.check(attrs, tpe.clone())
                 } else if let Some(tpe) = self.scope.entries.get_mut(id.as_str()) {
                     let tmp = mem::take(tpe);
-                    tmp.check(expect).map(|res| {
-                        *tpe = res;
-                        tpe.clone()
-                    })
+                    *tpe = tmp.check(attrs, expect)?;
+
+                    Ok(tpe.clone())
                 } else {
                     return Err(AnalysisError::VariableUndeclared(
                         attrs.pos.line,
@@ -218,7 +217,12 @@ impl<'a> Analysis<'a> {
                     Ok(Type::Array(types))
                 }
 
-                expect => Err((expect, self.project_type(value))),
+                expect => Err(AnalysisError::TypeMismatch(
+                    attrs.pos.line,
+                    attrs.pos.col,
+                    expect,
+                    self.project_type(value),
+                )),
             },
 
             Value::Record(fields) => match expect {
@@ -238,7 +242,12 @@ impl<'a> Analysis<'a> {
                     Ok(Type::Record(types))
                 }
 
-                expect => Err((expect, self.project_type(value))),
+                expect => Err(AnalysisError::TypeMismatch(
+                    attrs.pos.line,
+                    attrs.pos.col,
+                    expect,
+                    self.project_type(value),
+                )),
             },
 
             Value::Access(access) => Ok(self.analyze_access(&attrs, access, expect)?),
@@ -252,12 +261,11 @@ impl<'a> Analysis<'a> {
 
                     if let Some(tpe) = self.options.default_scope.entries.get(app.func.as_str()) {
                         let tmp = mem::take(result.as_mut());
-                        tmp.check(tpe.clone()).map(|tpe| {
-                            *result = tpe;
-                            Type::App {
-                                args: arg_types,
-                                result,
-                            }
+                        *result = tmp.check(attrs, tpe.clone())?;
+
+                        Ok(Type::App {
+                            args: arg_types,
+                            result,
                         })
                     } else {
                         return Err(AnalysisError::FuncUndeclared(
@@ -268,14 +276,19 @@ impl<'a> Analysis<'a> {
                     }
                 }
 
-                expect => Err((expect, self.project_type(value))),
+                expect => Err(AnalysisError::TypeMismatch(
+                    attrs.pos.line,
+                    attrs.pos.col,
+                    expect,
+                    self.project_type(value),
+                )),
             },
 
             Value::Binary(binary) => match binary.operator {
                 Operator::Add | Operator::Sub | Operator::Mul | Operator::Div => {
                     self.analyze_expr(&binary.lhs, Type::Number)?;
                     self.analyze_expr(&binary.rhs, Type::Number)?;
-                    expect.check(Type::Number)
+                    expect.check(attrs, Type::Number)
                 }
 
                 Operator::Eq
@@ -295,14 +308,14 @@ impl<'a> Analysis<'a> {
                         self.analyze_expr(&binary.lhs, rhs_expect)?;
                     }
 
-                    expect.check(Type::Bool)
+                    expect.check(attrs, Type::Bool)
                 }
 
                 Operator::And | Operator::Or | Operator::Xor => {
                     self.analyze_expr(&binary.lhs, Type::Bool)?;
                     self.analyze_expr(&binary.rhs, Type::Bool)?;
 
-                    expect.check(Type::Bool)
+                    expect.check(attrs, Type::Bool)
                 }
 
                 Operator::Not => unreachable!(),
@@ -311,21 +324,19 @@ impl<'a> Analysis<'a> {
             Value::Unary(unary) => match unary.operator {
                 Operator::Add | Operator::Sub => {
                     self.analyze_expr(&unary.expr, Type::Number)?;
-                    expect.check(Type::Number)
+                    expect.check(attrs, Type::Number)
                 }
 
                 Operator::Not => {
                     self.analyze_expr(&unary.expr, Type::Bool)?;
-                    expect.check(Type::Bool)
+                    expect.check(attrs, Type::Bool)
                 }
 
                 _ => unreachable!(),
             },
 
             Value::Group(expr) => Ok(self.analyze_expr(expr.as_ref(), expect)?),
-        };
-
-        result.map_err(type_mismatch_err(attrs))
+        }
     }
 
     fn analyze_access(
@@ -475,12 +486,12 @@ impl<'a> Analysis<'a> {
         match state.definition {
             Def::User(tpe) => {
                 let tmp = mem::take(tpe);
-                *tpe = tmp.check(expect).map_err(type_mismatch_err(attrs))?;
+                *tpe = tmp.check(attrs, expect)?;
 
                 Ok(tpe.clone())
             }
 
-            Def::System(tpe) => tpe.clone().check(expect).map_err(type_mismatch_err(attrs)),
+            Def::System(tpe) => tpe.clone().check(attrs, expect),
         }
     }
 
@@ -560,8 +571,4 @@ impl<'a> Analysis<'a> {
             Value::Group(expr) => self.project_type(&expr.value),
         }
     }
-}
-
-fn type_mismatch_err(attrs: &Attrs) -> impl FnOnce((Type, Type)) -> AnalysisError {
-    |(expect, actual)| AnalysisError::TypeMismatch(attrs.pos.line, attrs.pos.col, expect, actual)
 }
