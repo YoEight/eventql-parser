@@ -4,21 +4,304 @@ use std::{
 };
 
 use crate::{
-    Access, Attrs, Expr, Query, Raw, Source, SourceKind, Type, Typed, Value, error::AnalysisError,
+    Attrs, Expr, Query, Raw, Source, SourceKind, Type, Typed, Value, error::AnalysisError,
     token::Operator,
 };
 
 pub type AnalysisResult<A> = std::result::Result<A, AnalysisError>;
 
 pub struct AnalysisOptions {
-    default_scope: Scope,
-    event_type_info: Type,
+    pub default_scope: Scope,
+    pub event_type_info: Type,
 }
 
 impl Default for AnalysisOptions {
     fn default() -> Self {
         Self {
-            default_scope: Default::default(),
+            default_scope: Scope {
+                entries: HashMap::from([
+                    (
+                        "ABS".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "CEIL".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "FLOOR".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "ROUND".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "COS".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "EXP".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "POW".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number, Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "SQRT".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "RAND".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "RAND".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "PI".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "LOWER".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::String),
+                        },
+                    ),
+                    (
+                        "UPPER".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::String),
+                        },
+                    ),
+                    (
+                        "TRIM".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::String),
+                        },
+                    ),
+                    (
+                        "LTRIM".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::String),
+                        },
+                    ),
+                    (
+                        "RTRIM".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::String),
+                        },
+                    ),
+                    (
+                        "LEN".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "INSTR".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "SUBSTRING".to_owned(),
+                        Type::App {
+                            args: vec![Type::String, Type::Number, Type::Number],
+                            result: Box::new(Type::String),
+                        },
+                    ),
+                    (
+                        "REPLACE".to_owned(),
+                        Type::App {
+                            args: vec![Type::String, Type::String, Type::String],
+                            result: Box::new(Type::String),
+                        },
+                    ),
+                    (
+                        "STARTSWITH".to_owned(),
+                        Type::App {
+                            args: vec![Type::String, Type::String],
+                            result: Box::new(Type::Bool),
+                        },
+                    ),
+                    (
+                        "ENDSWITH".to_owned(),
+                        Type::App {
+                            args: vec![Type::String, Type::String],
+                            result: Box::new(Type::Bool),
+                        },
+                    ),
+                    (
+                        "NOW".to_owned(),
+                        Type::App {
+                            args: vec![],
+                            result: Box::new(Type::String),
+                        },
+                    ),
+                    (
+                        "YEAR".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "MONTH".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "DAY".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "HOUR".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "MINUTE".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "SECOND".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "WEEKDAY".to_owned(),
+                        Type::App {
+                            args: vec![Type::String],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "IF".to_owned(),
+                        Type::App {
+                            args: vec![Type::Bool, Type::Unspecified, Type::Unspecified],
+                            result: Box::new(Type::Unspecified),
+                        },
+                    ),
+                    (
+                        "COUNT".to_owned(),
+                        Type::App {
+                            args: vec![],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "SUM".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "AVG".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "MIN".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "MAX".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "MEDIAN".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "STDDEV".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "VARIANCE".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                    (
+                        "UNIQUE".to_owned(),
+                        Type::App {
+                            args: vec![Type::Number],
+                            result: Box::new(Type::Number),
+                        },
+                    ),
+                ]),
+            },
             event_type_info: Type::Record(BTreeMap::from([
                 ("specversion".to_owned(), Type::String),
                 ("id".to_owned(), Type::String),
@@ -272,7 +555,7 @@ impl<'a> Analysis<'a> {
                 )),
             },
 
-            Value::Access(access) => Ok(self.analyze_access(attrs, access, expect)?),
+            this @ Value::Access(_) => Ok(self.analyze_access(attrs, this, expect)?),
 
             Value::App(app) => match expect {
                 Type::App { args, mut result } if app.args.len() == args.len() => {
@@ -364,7 +647,7 @@ impl<'a> Analysis<'a> {
     fn analyze_access(
         &mut self,
         attrs: &Attrs,
-        access: &Access,
+        access: &Value,
         expect: Type,
     ) -> AnalysisResult<Type> {
         struct State<A, B> {
@@ -498,12 +781,7 @@ impl<'a> Analysis<'a> {
             }
         }
 
-        let state = go(
-            &mut self.scope,
-            self.options,
-            &access.target.attrs,
-            &access.target.value,
-        )?;
+        let state = go(&mut self.scope, self.options, attrs, access)?;
 
         match state.definition {
             Def::User(tpe) => {
