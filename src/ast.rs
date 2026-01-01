@@ -77,6 +77,14 @@ pub enum Type {
 }
 
 impl Type {
+    pub fn as_record_or_panic_mut(&mut self) -> &mut BTreeMap<String, Type> {
+        if let Self::Record(r) = self {
+            return r;
+        }
+
+        panic!("expected record type, got {:?}", self);
+    }
+
     /// Checks if two types are the same.
     ///
     /// * If `self` is `Type::Unspecified` then `self` is updated to the more specific `Type`.

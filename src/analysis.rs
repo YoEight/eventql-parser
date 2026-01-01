@@ -729,6 +729,15 @@ impl<'a> Analysis<'a> {
 
                     match state.definition {
                         Def::User(tpe) => {
+                            if matches!(tpe, Type::Unspecified) && state.dynamic {
+                                *tpe = Type::Record(BTreeMap::from([(access.field.clone(), Type::Unspecified)]));
+                                return Ok(State {
+                                    depth: state.depth + 1,
+                                    definition: Def::User( tpe.as_record_or_panic_mut().get_mut(access.field.as_str()).unwrap()),
+                                    ..state
+                                });
+                            }
+
                             if let Type::Record(fields) = tpe {
                                 match fields.entry(access.field.clone()) {
                                     Entry::Vacant(entry) => {
@@ -767,6 +776,14 @@ impl<'a> Analysis<'a> {
                         }
 
                         Def::System(tpe) => {
+                            if matches!(tpe, Type::Unspecified) && state.dynamic {
+                                return Ok(State {
+                                    depth: state.depth + 1,
+                                    definition: Def::System(&Type::Unspecified),
+                                    ..state
+                                });
+                            }
+
                             if let Type::Record(fields) = tpe {
                                 if let Some(field) = fields.get(access.field.as_str()) {
                                     return Ok(State {
