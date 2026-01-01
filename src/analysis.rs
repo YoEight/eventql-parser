@@ -8,10 +8,21 @@ use crate::{
     token::Operator,
 };
 
+/// Result type for static analysis operations.
+///
+/// This is a convenience type alias for `Result<A, AnalysisError>` used throughout
+/// the static analysis module.
 pub type AnalysisResult<A> = std::result::Result<A, AnalysisError>;
 
+/// Configuration options for static analysis.
+///
+/// This structure contains the type information needed to perform static analysis
+/// on EventQL queries, including the default scope with built-in functions and
+/// the type information for event records.
 pub struct AnalysisOptions {
+    /// The default scope containing built-in functions and their type signatures.
     pub default_scope: Scope,
+    /// Type information for event records being queried.
     pub event_type_info: Type,
 }
 
@@ -71,13 +82,6 @@ impl Default for AnalysisOptions {
                     ),
                     (
                         "SQRT".to_owned(),
-                        Type::App {
-                            args: vec![Type::Number],
-                            result: Box::new(Type::Number),
-                        },
-                    ),
-                    (
-                        "RAND".to_owned(),
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
@@ -321,6 +325,23 @@ impl Default for AnalysisOptions {
     }
 }
 
+/// Performs static analysis on an EventQL query.
+///
+/// This function takes a raw (untyped) query and performs type checking and
+/// variable scoping analysis. It validates that:
+/// - All variables are properly declared
+/// - Types match expected types in expressions and operations
+/// - Field accesses are valid for their record types
+/// - Function calls have the correct argument types
+///
+/// # Arguments
+///
+/// * `options` - Configuration containing type information and default scope
+/// * `query` - The raw query to analyze
+///
+/// # Returns
+///
+/// Returns a typed query on success, or an `AnalysisError` if type checking fails.
 pub fn static_analysis(
     options: &AnalysisOptions,
     query: Query<Raw>,
@@ -330,12 +351,19 @@ pub fn static_analysis(
     analysis.analyze_query(query)
 }
 
+/// Represents a variable scope during static analysis.
+///
+/// A scope tracks the variables and their types that are currently in scope
+/// during type checking. This is used to resolve variable references and
+/// ensure type correctness.
 #[derive(Default)]
 pub struct Scope {
+    /// Map of variable names to their types.
     pub entries: HashMap<String, Type>,
 }
 
 impl Scope {
+    /// Checks if the scope contains no entries.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
@@ -730,10 +758,17 @@ impl<'a> Analysis<'a> {
                     match state.definition {
                         Def::User(tpe) => {
                             if matches!(tpe, Type::Unspecified) && state.dynamic {
-                                *tpe = Type::Record(BTreeMap::from([(access.field.clone(), Type::Unspecified)]));
+                                *tpe = Type::Record(BTreeMap::from([(
+                                    access.field.clone(),
+                                    Type::Unspecified,
+                                )]));
                                 return Ok(State {
                                     depth: state.depth + 1,
-                                    definition: Def::User( tpe.as_record_or_panic_mut().get_mut(access.field.as_str()).unwrap()),
+                                    definition: Def::User(
+                                        tpe.as_record_or_panic_mut()
+                                            .get_mut(access.field.as_str())
+                                            .unwrap(),
+                                    ),
                                     ..state
                                 });
                             }

@@ -501,6 +501,19 @@ pub struct Query<A> {
 }
 
 impl Query<Raw> {
+    /// Performs static analysis on this raw query.
+    ///
+    /// This is a convenience method that runs type checking and variable scoping
+    /// analysis on the query, converting it from a raw (untyped) query to a
+    /// typed query.
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - Configuration containing type information and default scope
+    ///
+    /// # Returns
+    ///
+    /// Returns a typed query on success, or an error if type checking fails.
     pub fn run_static_analysis(self, options: &AnalysisOptions) -> crate::Result<Query<Typed>> {
         static_analysis(options, self).map_err(Error::Analysis)
     }

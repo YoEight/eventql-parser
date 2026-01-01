@@ -91,29 +91,83 @@ pub enum ParserError {
     UnexpectedEof,
 }
 
+/// Errors that can occur during static analysis.
+///
+/// These errors are produced by the type checker when it encounters
+/// type mismatches, undeclared variables, or other semantic issues
+/// in the query.
 #[derive(Debug, Error, Serialize)]
 pub enum AnalysisError {
+    /// A binding with the same name already exists in the current scope.
+    ///
+    /// Fields: `(line, column, binding_name)`
+    ///
+    /// This occurs when trying to declare a variable that shadows an existing
+    /// binding in the same scope, such as using the same alias for multiple
+    /// FROM sources.
     #[error("{0}:{1}: binding '{2}' already exists")]
     BindingAlreadyExists(u32, u32, String),
 
+    /// A variable was referenced but not declared in any accessible scope.
+    ///
+    /// Fields: `(line, column, variable_name)`
+    ///
+    /// This occurs when referencing a variable that hasn't been bound by a
+    /// FROM clause or defined in the default scope.
     #[error("{0}:{1}: variable '{2}' is undeclared")]
     VariableUndeclared(u32, u32, String),
 
+    /// A type mismatch occurred between expected and actual types.
+    ///
+    /// Fields: `(line, column, expected_type, actual_type)`
+    ///
+    /// This occurs when an expression has a different type than what is
+    /// required by its context (e.g., using a string where a number is expected).
     #[error("{0}:{1}: type mismatch: expected {2:?} but got {3:?} ")]
     TypeMismatch(u32, u32, Type, Type),
 
+    /// A record field was accessed but doesn't exist in the record type.
+    ///
+    /// Fields: `(line, column, field_name)`
+    ///
+    /// This occurs when trying to access a field that is not defined in the
+    /// record's type definition.
     #[error("{0}:{1}: record field '{2:?}' is undeclared ")]
     FieldUndeclared(u32, u32, String),
 
+    /// A function was called but is not declared in the scope.
+    ///
+    /// Fields: `(line, column, function_name)`
+    ///
+    /// This occurs when calling a function that is not defined in the default
+    /// scope or any accessible scope.
     #[error("{0}:{1}: function '{2:?}' is undeclared ")]
     FuncUndeclared(u32, u32, String),
 
+    /// Expected a record type but found a different type.
+    ///
+    /// Fields: `(line, column, actual_type)`
+    ///
+    /// This occurs when a record type is required (e.g., for field access)
+    /// but a different type was found.
     #[error("{0}:{1}: expected record but got {2:?}")]
     ExpectRecord(u32, u32, Type),
 
+    /// Expected a field literal but found a different expression.
+    ///
+    /// Fields: `(line, column)`
+    ///
+    /// This occurs in contexts where only a simple field reference is allowed,
+    /// such as in GROUP BY or ORDER BY clauses.
     #[error("{0}:{1}: expected a field")]
     ExpectFieldLiteral(u32, u32),
 
+    /// Expected a record literal but found a different expression.
+    ///
+    /// Fields: `(line, column)`
+    ///
+    /// This occurs when a record literal is required, such as in the
+    /// SELECT projection clause.
     #[error("{0}:{1}: expected a record")]
     ExpectRecordLiteral(u32, u32),
 }
