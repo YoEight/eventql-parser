@@ -6,20 +6,24 @@ attrs:
   pos:
     line: 1
     col: 1
-  scope: 1
-  tpe: Unspecified
 sources:
-  - binding: e
+  - binding:
+      name: e
+      pos:
+        line: 1
+        col: 6
     kind:
       Subquery:
         attrs:
           pos:
             line: 2
             col: 3
-          scope: 2
-          tpe: Unspecified
         sources:
-          - binding: e
+          - binding:
+              name: e
+              pos:
+                line: 2
+                col: 8
             kind:
               Name: events
         predicate:
@@ -27,8 +31,6 @@ sources:
             pos:
               line: 3
               col: 9
-            scope: 2
-            tpe: Unspecified
           value:
             Binary:
               lhs:
@@ -36,8 +38,6 @@ sources:
                   pos:
                     line: 3
                     col: 9
-                  scope: 2
-                  tpe: Unspecified
                 value:
                   Access:
                     target:
@@ -45,8 +45,6 @@ sources:
                         pos:
                           line: 3
                           col: 9
-                        scope: 2
-                        tpe: Unspecified
                       value:
                         Id: e
                     field: type
@@ -56,8 +54,6 @@ sources:
                   pos:
                     line: 3
                     col: 19
-                  scope: 2
-                  tpe: Unspecified
                 value:
                   String: io.eventsourcingdb.library.book-acquired
         group_by: ~
@@ -68,8 +64,6 @@ sources:
             pos:
               line: 4
               col: 16
-            scope: 2
-            tpe: Unspecified
           value:
             Record:
               - name: orderId
@@ -78,8 +72,6 @@ sources:
                     pos:
                       line: 4
                       col: 27
-                    scope: 2
-                    tpe: Unspecified
                   value:
                     Access:
                       target:
@@ -87,8 +79,6 @@ sources:
                           pos:
                             line: 4
                             col: 27
-                          scope: 2
-                          tpe: Unspecified
                         value:
                           Id: e
                       field: id
@@ -98,8 +88,6 @@ sources:
                     pos:
                       line: 4
                       col: 40
-                    scope: 2
-                    tpe: Unspecified
                   value:
                     Access:
                       target:
@@ -107,8 +95,6 @@ sources:
                           pos:
                             line: 4
                             col: 40
-                          scope: 2
-                          tpe: Unspecified
                         value:
                           Access:
                             target:
@@ -116,8 +102,6 @@ sources:
                                 pos:
                                   line: 4
                                   col: 40
-                                scope: 2
-                                tpe: Unspecified
                               value:
                                 Id: e
                             field: data
@@ -128,8 +112,6 @@ predicate:
     pos:
       line: 6
       col: 7
-    scope: 1
-    tpe: Unspecified
   value:
     Binary:
       lhs:
@@ -137,8 +119,6 @@ predicate:
           pos:
             line: 6
             col: 7
-          scope: 1
-          tpe: Unspecified
         value:
           Access:
             target:
@@ -146,8 +126,6 @@ predicate:
                 pos:
                   line: 6
                   col: 7
-                scope: 1
-                tpe: Unspecified
               value:
                 Id: e
             field: value
@@ -157,8 +135,6 @@ predicate:
           pos:
             line: 6
             col: 17
-          scope: 1
-          tpe: Unspecified
         value:
           Number: 100
 group_by: ~
@@ -169,8 +145,6 @@ projection:
     pos:
       line: 7
       col: 14
-    scope: 1
-    tpe: Unspecified
   value:
     Id: e
 distinct: false

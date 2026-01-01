@@ -25,16 +25,11 @@ pub type ParseResult<A> = Result<A, ParserError>;
 struct Parser<'a> {
     input: &'a [Token<'a>],
     offset: usize,
-    scope: u64,
 }
 
 impl<'a> Parser<'a> {
     fn new(input: &'a [Token<'a>]) -> Self {
-        Self {
-            input,
-            offset: 0,
-            scope: 0,
-        }
+        Self { input, offset: 0 }
     }
 
     fn peek<'b>(&'b self) -> Token<'a> {
@@ -91,7 +86,6 @@ impl<'a> Parser<'a> {
         let binding = if let Sym::Id(name) = token.sym {
             Binding {
                 name: name.to_owned(),
-                scope: self.scope,
                 pos: token.into(),
             }
         } else {
@@ -242,7 +236,7 @@ impl<'a> Parser<'a> {
                     self.shift();
                     let mut access = Access {
                         target: Box::new(Expr {
-                            attrs: Attrs::new(token.into(), self.scope),
+                            attrs: Attrs::new(token.into()),
                             value: Value::Id(name.to_owned()),
                         }),
                         field: self.parse_ident()?,
@@ -335,7 +329,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(Expr {
-            attrs: Attrs::new(token.into(), self.scope),
+            attrs: Attrs::new(token.into()),
             value,
         })
     }
@@ -374,9 +368,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_query(&mut self) -> ParseResult<Query<Raw>> {
-        self.scope += 1;
-        let scope = self.scope;
-
         let mut sources = vec![];
         let pos = self.peek().into();
 
@@ -437,11 +428,8 @@ impl<'a> Parser<'a> {
 
         let projection = self.parse_expr()?;
 
-        self.scope -= 1;
-
         Ok(Query {
-            scope,
-            attrs: Attrs::new(pos, scope),
+            attrs: Attrs::new(pos),
             sources,
             predicate,
             group_by,

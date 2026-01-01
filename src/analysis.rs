@@ -26,34 +26,55 @@ pub fn static_analysis(
 }
 
 #[derive(Default)]
-pub struct TypeRegistry {
-    pub scopes: HashMap<u64, Scope>,
-}
-
-#[derive(Default)]
 pub struct Scope {
     pub entries: HashMap<String, Type>,
 }
 
+impl Scope {
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+}
+
 struct Analysis<'a> {
     options: &'a AnalysisOptions,
-    registry: TypeRegistry,
+    prev_scopes: Vec<Scope>,
+    scope: Scope,
 }
 
 impl<'a> Analysis<'a> {
     fn new(options: &'a AnalysisOptions) -> Self {
         Self {
             options,
-            registry: TypeRegistry::default(),
+            prev_scopes: Default::default(),
+            scope: Scope::default(),
+        }
+    }
+
+    fn enter_scope(&mut self) {
+        if self.scope.is_empty() {
+            return;
+        }
+
+        let prev = mem::take(&mut self.scope);
+        self.prev_scopes.push(prev);
+    }
+
+    fn exit_scope(&mut self) -> Scope {
+        if let Some(prev) = self.prev_scopes.pop() {
+            mem::replace(&mut self.scope, prev)
+        } else {
+            mem::take(&mut self.scope)
         }
     }
 
     fn analyze_query(&mut self, query: Query<Raw>) -> AnalysisResult<Query<Typed>> {
-        let scope = query.scope;
+        self.enter_scope();
+
         let mut sources = Vec::with_capacity(query.sources.len());
 
         for source in query.sources {
-            sources.push(self.analyze_source(scope, source)?);
+            sources.push(self.analyze_source(source)?);
         }
 
         if let Some(expr) = &query.predicate {
@@ -102,8 +123,9 @@ impl<'a> Analysis<'a> {
             ));
         }
 
+        self.exit_scope();
+
         Ok(Query {
-            scope,
             attrs: query.attrs,
             sources,
             predicate: query.predicate,
@@ -116,22 +138,17 @@ impl<'a> Analysis<'a> {
         })
     }
 
-    fn analyze_source(
-        &mut self,
-        scope_id: u64,
-        source: Source<Raw>,
-    ) -> AnalysisResult<Source<Typed>> {
+    fn analyze_source(&mut self, source: Source<Raw>) -> AnalysisResult<Source<Typed>> {
         let kind = self.analyze_source_kind(source.kind)?;
-        let type_info = match &kind {
+        let tpe = match &kind {
             SourceKind::Name(_) | SourceKind::Subject(_) => self.options.event_type_info.clone(),
             SourceKind::Subquery(query) => self.projection_type(query),
         };
 
-        let scope = self.registry.scopes.entry(scope_id).or_default();
-
-        if scope
+        if self
+            .scope
             .entries
-            .insert(source.binding.name.clone(), type_info)
+            .insert(source.binding.name.clone(), tpe)
             .is_some()
         {
             return Err(AnalysisError::BindingAlreadyExists(
@@ -176,7 +193,7 @@ impl<'a> Analysis<'a> {
             Value::Id(id) => {
                 if let Some(tpe) = self.options.default_scope.entries.get(id) {
                     expect.check(tpe.clone())
-                } else if let Some(tpe) = self.get_id_type_mut(attrs.scope, id.as_str()) {
+                } else if let Some(tpe) = self.scope.entries.get_mut(id.as_str()) {
                     let tmp = mem::take(tpe);
                     tmp.check(expect).map(|res| {
                         *tpe = res;
@@ -201,7 +218,7 @@ impl<'a> Analysis<'a> {
                     Ok(Type::Array(types))
                 }
 
-                expect => Err((expect, self.project_type(attrs.scope, value))),
+                expect => Err((expect, self.project_type(value))),
             },
 
             Value::Record(fields) => match expect {
@@ -221,7 +238,7 @@ impl<'a> Analysis<'a> {
                     Ok(Type::Record(types))
                 }
 
-                expect => Err((expect, self.project_type(attrs.scope, value))),
+                expect => Err((expect, self.project_type(value))),
             },
 
             Value::Access(access) => Ok(self.analyze_access(&attrs, access, expect)?),
@@ -251,7 +268,7 @@ impl<'a> Analysis<'a> {
                     }
                 }
 
-                expect => Err((expect, self.project_type(attrs.scope, value))),
+                expect => Err((expect, self.project_type(value))),
             },
 
             Value::Binary(binary) => match binary.operator {
@@ -340,7 +357,7 @@ impl<'a> Analysis<'a> {
         }
 
         fn go<'a>(
-            reg: &'a mut TypeRegistry,
+            scope: &'a mut Scope,
             sys: &'a AnalysisOptions,
             attrs: &'a Attrs,
             value: &'a Value,
@@ -349,13 +366,7 @@ impl<'a> Analysis<'a> {
                 Value::Id(id) => {
                     if let Some(tpe) = sys.default_scope.entries.get(id.as_str()) {
                         Ok(State::new(Def::System(tpe)))
-                    } else if let Some(tpe) = reg
-                        .scopes
-                        .entry(attrs.scope)
-                        .or_default()
-                        .entries
-                        .get_mut(id.as_str())
-                    {
+                    } else if let Some(tpe) = scope.entries.get_mut(id.as_str()) {
                         Ok(State::new(Def::User(tpe)))
                     } else {
                         Err(AnalysisError::VariableUndeclared(
@@ -366,7 +377,7 @@ impl<'a> Analysis<'a> {
                     }
                 }
                 Value::Access(access) => {
-                    let mut state = go(reg, sys, &access.target.attrs, &access.target.value)?;
+                    let mut state = go(scope, sys, &access.target.attrs, &access.target.value)?;
 
                     // TODO - we should consider make that field and depth configurable.
                     let is_data_field = state.depth == 0 && access.field == "data";
@@ -455,7 +466,7 @@ impl<'a> Analysis<'a> {
         }
 
         let state = go(
-            &mut self.registry,
+            &mut self.scope,
             &self.options,
             &access.target.attrs,
             &access.target.value,
@@ -473,16 +484,11 @@ impl<'a> Analysis<'a> {
         }
     }
 
-    fn get_id_type_mut(&mut self, scope_id: u64, id: &str) -> Option<&mut Type> {
-        let scope = self.registry.scopes.entry(scope_id).or_default();
-        scope.entries.get_mut(id)
-    }
-
     fn projection_type(&self, query: &Query<Typed>) -> Type {
-        self.project_type(query.scope, &query.projection.value)
+        self.project_type(&query.projection.value)
     }
 
-    fn project_type(&self, scope: u64, value: &Value) -> Type {
+    fn project_type(&self, value: &Value) -> Type {
         match value {
             Value::Number(_) => Type::Number,
             Value::String(_) => Type::String,
@@ -490,36 +496,23 @@ impl<'a> Analysis<'a> {
             Value::Id(id) => {
                 if let Some(tpe) = self.options.default_scope.entries.get(id) {
                     tpe.clone()
-                } else if let Some(tpe) = self
-                    .registry
-                    .scopes
-                    .get(&scope)
-                    .and_then(|s| s.entries.get(id))
-                {
+                } else if let Some(tpe) = self.scope.entries.get(id) {
                     tpe.clone()
                 } else {
                     Type::Unspecified
                 }
             }
-            Value::Array(exprs) => Type::Array(
-                exprs
-                    .iter()
-                    .map(|v| self.project_type(scope, &v.value))
-                    .collect(),
-            ),
+            Value::Array(exprs) => {
+                Type::Array(exprs.iter().map(|v| self.project_type(&v.value)).collect())
+            }
             Value::Record(fields) => Type::Record(
                 fields
                     .iter()
-                    .map(|field| {
-                        (
-                            field.name.clone(),
-                            self.project_type(scope, &field.value.value),
-                        )
-                    })
+                    .map(|field| (field.name.clone(), self.project_type(&field.value.value)))
                     .collect(),
             ),
             Value::Access(access) => {
-                let tpe = self.project_type(scope, &access.target.value);
+                let tpe = self.project_type(&access.target.value);
                 if let Type::Record(fields) = tpe {
                     fields
                         .get(access.field.as_str())
@@ -564,7 +557,7 @@ impl<'a> Analysis<'a> {
                 | Operator::Xor
                 | Operator::Not => unreachable!(),
             },
-            Value::Group(expr) => self.project_type(scope, &expr.value),
+            Value::Group(expr) => self.project_type(&expr.value),
         }
     }
 }

@@ -178,14 +178,12 @@ impl Type {
 pub struct Attrs {
     /// Source position of this expression
     pub pos: Pos,
-    /// Scope level (0 for top-level, incremented for subqueries)
-    pub scope: u64,
 }
 
 impl Attrs {
     /// Create new attributes with unspecified type.
-    pub fn new(pos: Pos, scope: u64) -> Self {
-        Self { pos, scope }
+    pub fn new(pos: Pos) -> Self {
+        Self { pos }
     }
 }
 
@@ -317,8 +315,6 @@ pub enum Value {
 pub struct Binding {
     /// Name attached to a source of events
     pub name: String,
-    /// Scope where that binding was introduced
-    pub scope: u64,
     /// Position in the source code where that binding was introduced
     pub pos: Pos,
 }
@@ -468,8 +464,6 @@ pub struct Typed;
 /// ```
 #[derive(Debug, Clone, Serialize)]
 pub struct Query<A> {
-    /// Scope of the query. Useful to retrieve all the variables that belongs to that query
-    pub scope: u64,
     /// Metadata about this query
     pub attrs: Attrs,
     /// FROM clause sources (must have at least one)
