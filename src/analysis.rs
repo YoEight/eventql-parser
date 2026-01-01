@@ -199,11 +199,11 @@ impl<'a> Analysis<'a> {
 
                     Ok(tpe.clone())
                 } else {
-                    return Err(AnalysisError::VariableUndeclared(
+                    Err(AnalysisError::VariableUndeclared(
                         attrs.pos.line,
                         attrs.pos.col,
                         id.to_owned(),
-                    ));
+                    ))
                 }
             }
 
@@ -250,7 +250,7 @@ impl<'a> Analysis<'a> {
                 )),
             },
 
-            Value::Access(access) => Ok(self.analyze_access(&attrs, access, expect)?),
+            Value::Access(access) => Ok(self.analyze_access(attrs, access, expect)?),
 
             Value::App(app) => match expect {
                 Type::App { args, mut result } if app.args.len() == args.len() => {
@@ -268,11 +268,11 @@ impl<'a> Analysis<'a> {
                             result,
                         })
                     } else {
-                        return Err(AnalysisError::FuncUndeclared(
+                        Err(AnalysisError::FuncUndeclared(
                             attrs.pos.line,
                             attrs.pos.col,
                             app.func.clone(),
-                        ));
+                        ))
                     }
                 }
 
@@ -478,7 +478,7 @@ impl<'a> Analysis<'a> {
 
         let state = go(
             &mut self.scope,
-            &self.options,
+            self.options,
             &access.target.attrs,
             &access.target.value,
         )?;
