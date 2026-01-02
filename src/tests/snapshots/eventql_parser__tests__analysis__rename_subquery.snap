@@ -116,6 +116,11 @@ Ok:
                               field: data
                         field: total
           distinct: false
+          meta:
+            project:
+              Record:
+                orderId: Unspecified
+                value: Unspecified
   predicate:
     attrs:
       pos:
@@ -157,3 +162,8 @@ Ok:
     value:
       Id: e
   distinct: false
+  meta:
+    project:
+      Record:
+        orderId: Unspecified
+        value: Number

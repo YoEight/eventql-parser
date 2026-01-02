@@ -7,7 +7,6 @@
 //! # Main Function
 //!
 //! - [`parse`] - Convert a slice of tokens into a Query AST
-use std::marker::PhantomData;
 
 use crate::ast::{
     Access, App, Attrs, Binary, Expr, Field, Limit, Order, OrderBy, Query, Source, SourceKind,
@@ -437,7 +436,7 @@ impl<'a> Parser<'a> {
             limit,
             projection,
             distinct,
-            _marker: PhantomData,
+            meta: Raw,
         })
     }
 }

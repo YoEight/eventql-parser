@@ -11,10 +11,10 @@
 //! - [`Value`] - The various kinds of expression values (literals, operators, etc.)
 //! - [`Source`] - Data sources in FROM clauses
 //!
-use std::{collections::BTreeMap, marker::PhantomData, mem};
+use std::{collections::BTreeMap, mem};
 
 use crate::{
-    analysis::{AnalysisOptions, static_analysis},
+    analysis::{AnalysisOptions, Typed, static_analysis},
     error::{AnalysisError, Error},
     token::{Operator, Token},
 };
@@ -437,11 +437,6 @@ pub enum Limit {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Raw;
 
-/// Represents the state of a query that has been statically analysed. It includes all variables are defined
-/// and the types are sound.
-#[derive(Debug, Clone, Copy, Serialize)]
-pub struct Typed;
-
 /// A complete EventQL query.
 ///
 /// This is the root node of the AST, representing a full query with all its clauses.
@@ -495,9 +490,8 @@ pub struct Query<A> {
     pub projection: Expr,
     /// Remove duplicate rows from the query's results
     pub distinct: bool,
-
-    #[serde(skip)]
-    pub(crate) _marker: PhantomData<A>,
+    /// Query metadata
+    pub meta: A,
 }
 
 impl Query<Raw> {

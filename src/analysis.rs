@@ -3,10 +3,21 @@ use std::{
     mem,
 };
 
+use serde::Serialize;
+
 use crate::{
-    Attrs, Expr, Query, Raw, Source, SourceKind, Type, Typed, Value, error::AnalysisError,
-    token::Operator,
+    Attrs, Expr, Query, Raw, Source, SourceKind, Type, Value, error::AnalysisError, token::Operator,
 };
+
+/// Represents the state of a query that has been statically analysed. It includes all variables are defined
+/// and the types are sound.
+#[derive(Debug, Clone, Serialize)]
+pub struct Typed {
+    pub project: Type,
+
+    #[serde(skip)]
+    pub scope: Scope,
+}
 
 /// Result type for static analysis operations.
 ///
@@ -356,7 +367,7 @@ pub fn static_analysis(
 /// A scope tracks the variables and their types that are currently in scope
 /// during type checking. This is used to resolve variable references and
 /// ensure type correctness.
-#[derive(Default)]
+#[derive(Default, Serialize, Clone, Debug)]
 pub struct Scope {
     /// Map of variable names to their types.
     pub entries: HashMap<String, Type>,
@@ -446,17 +457,17 @@ impl<'a> Analysis<'a> {
             ));
         }
 
-        let tpe = self.analyze_expr(&query.projection, Type::Unspecified)?;
+        let project = self.analyze_expr(&query.projection, Type::Unspecified)?;
 
-        if !matches!(&tpe, Type::Record(f) if !f.is_empty()) {
+        if !matches!(&project, Type::Record(f) if !f.is_empty()) {
             return Err(AnalysisError::ExpectRecord(
                 query.projection.attrs.pos.line,
                 query.projection.attrs.pos.col,
-                tpe,
+                project,
             ));
         }
 
-        self.exit_scope();
+        let scope = self.exit_scope();
 
         Ok(Query {
             attrs: query.attrs,
@@ -467,7 +478,7 @@ impl<'a> Analysis<'a> {
             limit: query.limit,
             projection: query.projection,
             distinct: query.distinct,
-            _marker: std::marker::PhantomData,
+            meta: Typed { project, scope },
         })
     }
 

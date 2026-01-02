@@ -103,3 +103,4 @@ projection:
                     field: data
               field: price
 distinct: true
+meta: ~

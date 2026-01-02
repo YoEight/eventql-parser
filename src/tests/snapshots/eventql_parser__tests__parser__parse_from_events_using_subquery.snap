@@ -107,6 +107,7 @@ sources:
                             field: data
                       field: total
         distinct: false
+        meta: ~
 predicate:
   attrs:
     pos:
@@ -148,3 +149,4 @@ projection:
   value:
     Id: e
 distinct: false
+meta: ~
