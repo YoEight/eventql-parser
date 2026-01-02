@@ -9,12 +9,27 @@ use crate::{
     Attrs, Expr, Query, Raw, Source, SourceKind, Type, Value, error::AnalysisError, token::Operator,
 };
 
-/// Represents the state of a query that has been statically analysed. It includes all variables are defined
-/// and the types are sound.
+/// Represents the state of a query that has been statically analyzed.
+///
+/// This type is used as a marker to indicate that a query has successfully
+/// passed static analysis. It contains metadata about the query's type
+/// information and variable scope after type checking.
+///
+/// All variables in a typed query are guaranteed to be:
+/// - Properly declared and in scope
+/// - Type-safe with sound type assignments
 #[derive(Debug, Clone, Serialize)]
 pub struct Typed {
+    /// The inferred type of the query's projection (PROJECT INTO clause).
+    ///
+    /// This represents the shape and types of the data that will be
+    /// returned by the query.
     pub project: Type,
 
+    /// The variable scope after static analysis.
+    ///
+    /// Contains all variables that were in scope during type checking,
+    /// including bindings from FROM clauses and their associated types.
     #[serde(skip)]
     pub scope: Scope,
 }

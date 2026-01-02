@@ -490,7 +490,15 @@ pub struct Query<A> {
     pub projection: Expr,
     /// Remove duplicate rows from the query's results
     pub distinct: bool,
-    /// Query metadata
+    /// Type-level metadata about the query's analysis state.
+    ///
+    /// This field uses a generic type parameter to track whether the query
+    /// is in a raw (unparsed/untyped) state or has been statically analyzed:
+    /// - `Query<Raw>`: Query parsed but not yet type-checked
+    /// - `Query<Typed>`: Query that has passed static analysis with validated
+    ///   types and variable scopes
+    ///
+    /// This provides compile-time guarantees about the query's type safety.
     pub meta: A,
 }
 
