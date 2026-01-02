@@ -476,6 +476,7 @@ fn binding_pow(op: Operator) -> (u64, u64) {
     match op {
         Operator::Add | Operator::Sub => (20, 21),
         Operator::Mul | Operator::Div => (30, 31),
+        Operator::Contains => (40, 39),
         Operator::Eq
         | Operator::Neq
         | Operator::Gt

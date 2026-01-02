@@ -572,14 +572,24 @@ impl<'a> Analysis<'a> {
                 }
 
                 match expect {
-                    Type::Array(mut types) if exprs.len() == types.len() => {
+                    Type::Array(Some(mut types)) if exprs.len() == types.len() => {
                         for (expr, expect) in exprs.iter().zip(types.iter_mut()) {
                             let tmp = mem::take(expect);
                             *expect = self.analyze_expr(expr, tmp)?;
                         }
 
-                        Ok(Type::Array(types))
+                        Ok(Type::Array(Some(types)))
                     }
+
+                    Type::Array(None) => match self.project_type(this) {
+                        Type::Array(Some(types)) => Ok(Type::Array(Some(types))),
+                        other => Err(AnalysisError::TypeMismatch(
+                            attrs.pos.line,
+                            attrs.pos.col,
+                            expect,
+                            other,
+                        )),
+                    },
 
                     expect => Err(AnalysisError::TypeMismatch(
                         attrs.pos.line,
@@ -687,6 +697,42 @@ impl<'a> Analysis<'a> {
                         && !matches!(rhs_expect, Type::Unspecified)
                     {
                         self.analyze_expr(&binary.lhs, rhs_expect)?;
+                    }
+
+                    expect.check(attrs, Type::Bool)
+                }
+
+                Operator::Contains => {
+                    let lhs_expect = self.analyze_expr(&binary.lhs, Type::Array(None))?;
+
+                    if !matches!(lhs_expect, Type::Array(_) | Type::Unspecified) {
+                        return Err(AnalysisError::ExpectArray(
+                            attrs.pos.line,
+                            attrs.pos.col,
+                            lhs_expect,
+                        ));
+                    }
+
+                    let lhs_assumption = if let Type::Array(Some(elems)) = &lhs_expect {
+                        let mut inner_type = Type::default();
+
+                        for tpe in elems.iter().cloned() {
+                            inner_type = inner_type.check(attrs, tpe)?;
+                        }
+
+                        inner_type
+                    } else {
+                        Type::Unspecified
+                    };
+
+                    let rhs_expect = self.analyze_expr(&binary.rhs, lhs_assumption.clone())?;
+
+                    // If the left side didn't have enough type information while the other did,
+                    // we replay another typecheck pass on the left side if the right side was conclusive
+                    if matches!(lhs_assumption, Type::Unspecified)
+                        && !matches!(rhs_expect, Type::Unspecified)
+                    {
+                        // TODO - check if lhs_expect was Type::Array(None) and act accordingly
                     }
 
                     expect.check(attrs, Type::Bool)
@@ -913,9 +959,13 @@ impl<'a> Analysis<'a> {
                     Type::Unspecified
                 }
             }
-            Value::Array(exprs) => {
-                Type::Array(exprs.iter().map(|v| self.project_type(&v.value)).collect())
-            }
+            Value::Array(exprs) => Type::Array(
+                exprs
+                    .iter()
+                    .map(|v| self.project_type(&v.value))
+                    .collect::<Vec<_>>()
+                    .into(),
+            ),
             Value::Record(fields) => Type::Record(
                 fields
                     .iter()
@@ -951,7 +1001,8 @@ impl<'a> Analysis<'a> {
                 | Operator::And
                 | Operator::Or
                 | Operator::Xor
-                | Operator::Not => Type::Bool,
+                | Operator::Not
+                | Operator::Contains => Type::Bool,
             },
             Value::Unary(unary) => match unary.operator {
                 Operator::Add | Operator::Sub => Type::Number,
@@ -966,7 +1017,8 @@ impl<'a> Analysis<'a> {
                 | Operator::And
                 | Operator::Or
                 | Operator::Xor
-                | Operator::Not => unreachable!(),
+                | Operator::Not
+                | Operator::Contains => unreachable!(),
             },
             Value::Group(expr) => self.project_type(&expr.value),
         }

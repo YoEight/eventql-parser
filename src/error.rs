@@ -153,6 +153,14 @@ pub enum AnalysisError {
     #[error("{0}:{1}: expected record but got {2:?}")]
     ExpectRecord(u32, u32, Type),
 
+    /// Expected an array type but found a different type.
+    ///
+    /// Fields: `(line, column, actual_type)`
+    ///
+    /// This occurs when an array type is required but a different type was found.
+    #[error("{0}:{1}: expected an array but got {2:?}")]
+    ExpectArray(u32, u32, Type),
+
     /// Expected a field literal but found a different expression.
     ///
     /// Fields: `(line, column)`
