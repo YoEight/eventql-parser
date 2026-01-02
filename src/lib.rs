@@ -3,7 +3,7 @@
 //! This library provides a complete lexer and parser for EventQL (EQL), a query language
 //! designed for event sourcing systems. It allows you to parse EQL query strings into
 //! an abstract syntax tree (AST) that can be analyzed or executed.
-pub mod analysis;
+mod analysis;
 mod ast;
 mod error;
 mod lexer;
@@ -22,6 +22,7 @@ use nom::Err;
 /// This module provides a single import point for all the library's public API,
 /// including AST types, error types, lexer, parser, and token types.
 pub mod prelude {
+    pub use super::analysis::*;
     pub use super::ast::*;
     pub use super::error::*;
     pub use super::lexer::*;
