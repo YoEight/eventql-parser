@@ -7,13 +7,14 @@
 //! # Main Function
 //!
 //! - [`parse`] - Convert a slice of tokens into a Query AST
-use crate::GroupBy;
+
 use crate::ast::{
     Access, App, Attrs, Binary, Expr, Field, Limit, Order, OrderBy, Query, Source, SourceKind,
     Unary, Value,
 };
 use crate::error::ParserError;
 use crate::token::{Operator, Sym, Symbol, Token};
+use crate::{Binding, GroupBy, Raw};
 
 /// Result type for parser operations.
 ///
@@ -23,16 +24,11 @@ pub type ParseResult<A> = Result<A, ParserError>;
 struct Parser<'a> {
     input: &'a [Token<'a>],
     offset: usize,
-    scope: u64,
 }
 
 impl<'a> Parser<'a> {
     fn new(input: &'a [Token<'a>]) -> Self {
-        Self {
-            input,
-            offset: 0,
-            scope: 0,
-        }
+        Self { input, offset: 0 }
     }
 
     fn peek<'b>(&'b self) -> Token<'a> {
@@ -63,7 +59,7 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn parse_source_kind(&mut self) -> ParseResult<SourceKind> {
+    fn parse_source_kind(&mut self) -> ParseResult<SourceKind<Raw>> {
         let token = self.shift();
         match token.sym {
             Sym::Id(id) => Ok(SourceKind::Name(id.to_owned())),
@@ -82,9 +78,23 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_source(&mut self) -> ParseResult<Source> {
+    fn parse_source(&mut self) -> ParseResult<Source<Raw>> {
         expect_keyword(self.shift(), "from")?;
-        let binding = self.parse_ident()?;
+
+        let token = self.shift();
+        let binding = if let Sym::Id(name) = token.sym {
+            Binding {
+                name: name.to_owned(),
+                pos: token.into(),
+            }
+        } else {
+            return Err(ParserError::ExpectedIdent(
+                token.line,
+                token.col,
+                token.sym.to_string(),
+            ));
+        };
+
         expect_keyword(self.shift(), "in")?;
         let kind = self.parse_source_kind()?;
 
@@ -225,7 +235,7 @@ impl<'a> Parser<'a> {
                     self.shift();
                     let mut access = Access {
                         target: Box::new(Expr {
-                            attrs: Attrs::new(token.into(), self.scope),
+                            attrs: Attrs::new(token.into()),
                             value: Value::Id(name.to_owned()),
                         }),
                         field: self.parse_ident()?,
@@ -318,7 +328,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(Expr {
-            attrs: Attrs::new(token.into(), self.scope),
+            attrs: Attrs::new(token.into()),
             value,
         })
     }
@@ -356,10 +366,7 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
-    fn parse_query(&mut self) -> ParseResult<Query> {
-        self.scope += 1;
-        let scope = self.scope;
-
+    fn parse_query(&mut self) -> ParseResult<Query<Raw>> {
         let mut sources = vec![];
         let pos = self.peek().into();
 
@@ -367,6 +374,11 @@ impl<'a> Parser<'a> {
             && name.eq_ignore_ascii_case("from")
         {
             sources.push(self.parse_source()?);
+        }
+
+        if sources.is_empty() {
+            let token = self.peek();
+            return Err(ParserError::MissingFromStatement(token.line, token.col));
         }
 
         let predicate = if let Sym::Id(name) = self.peek().sym
@@ -415,10 +427,8 @@ impl<'a> Parser<'a> {
 
         let projection = self.parse_expr()?;
 
-        self.scope -= 1;
-
         Ok(Query {
-            attrs: Attrs::new(pos, scope),
+            attrs: Attrs::new(pos),
             sources,
             predicate,
             group_by,
@@ -426,6 +436,7 @@ impl<'a> Parser<'a> {
             limit,
             projection,
             distinct,
+            meta: Raw,
         })
     }
 }
@@ -507,7 +518,7 @@ fn binding_pow(op: Operator) -> (u64, u64) {
 /// 3. Additive (`+`, `-`)
 /// 4. Comparison (`<`, `<=`, `>`, `>=`, `==`, `!=`)
 /// 5. Logical (`AND`, `OR`, `XOR`)
-pub fn parse<'a>(input: &'a [Token<'a>]) -> ParseResult<Query> {
+pub fn parse<'a>(input: &'a [Token<'a>]) -> ParseResult<Query<Raw>> {
     let mut parser = Parser::new(input);
 
     parser.parse_query()

@@ -6,10 +6,12 @@ attrs:
   pos:
     line: 1
     col: 1
-  scope: 1
-  tpe: Unspecified
 sources:
-  - binding: e
+  - binding:
+      name: e
+      pos:
+        line: 1
+        col: 6
     kind:
       Name: events
 predicate:
@@ -17,8 +19,6 @@ predicate:
     pos:
       line: 2
       col: 7
-    scope: 1
-    tpe: Unspecified
   value:
     Binary:
       lhs:
@@ -26,8 +26,6 @@ predicate:
           pos:
             line: 2
             col: 7
-          scope: 1
-          tpe: Unspecified
         value:
           Access:
             target:
@@ -35,8 +33,6 @@ predicate:
                 pos:
                   line: 2
                   col: 7
-                scope: 1
-                tpe: Unspecified
               value:
                 Id: e
             field: subject
@@ -46,8 +42,6 @@ predicate:
           pos:
             line: 2
             col: 20
-          scope: 1
-          tpe: Unspecified
         value:
           String: /books/42
 group_by: ~
@@ -58,8 +52,6 @@ projection:
     pos:
       line: 3
       col: 14
-    scope: 1
-    tpe: Unspecified
   value:
     Record:
       - name: total
@@ -68,10 +60,9 @@ projection:
             pos:
               line: 3
               col: 23
-            scope: 1
-            tpe: Unspecified
           value:
             App:
               func: COUNT
               args: []
 distinct: false
+meta: ~

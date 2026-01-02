@@ -6,10 +6,12 @@ attrs:
   pos:
     line: 1
     col: 1
-  scope: 1
-  tpe: Unspecified
 sources:
-  - binding: e
+  - binding:
+      name: e
+      pos:
+        line: 1
+        col: 6
     kind:
       Name: events
 predicate: ~
@@ -20,8 +22,6 @@ order_by:
       pos:
         line: 2
         col: 10
-      scope: 1
-      tpe: Unspecified
     value:
       Access:
         target:
@@ -29,8 +29,6 @@ order_by:
             pos:
               line: 2
               col: 10
-            scope: 1
-            tpe: Unspecified
           value:
             Id: e
         field: time
@@ -42,8 +40,7 @@ projection:
     pos:
       line: 4
       col: 14
-    scope: 1
-    tpe: Unspecified
   value:
     Id: e
 distinct: false
+meta: ~

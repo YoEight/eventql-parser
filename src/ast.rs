@@ -11,7 +11,13 @@
 //! - [`Value`] - The various kinds of expression values (literals, operators, etc.)
 //! - [`Source`] - Data sources in FROM clauses
 //!
-use crate::token::{Operator, Token};
+use std::{collections::BTreeMap, mem};
+
+use crate::{
+    analysis::{AnalysisOptions, Typed, static_analysis},
+    error::{AnalysisError, Error},
+    token::{Operator, Token},
+};
 use serde::Serialize;
 
 /// Position information for source code locations.
@@ -47,11 +53,12 @@ impl From<Token<'_>> for Pos {
 
 /// Type information for expressions.
 ///
-/// This enum represents the type of an expression in the EventQL type system.
-/// Types can be inferred during semantic analysis or left as `Unspecified`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize)]
+/// This enum represents the type of an expression in the E
+
+#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize)]
 pub enum Type {
     /// Type has not been determined yet
+    #[default]
     Unspecified,
     /// Numeric type (f64)
     Number,
@@ -60,11 +67,122 @@ pub enum Type {
     /// Boolean type
     Bool,
     /// Array type
-    Array,
+    Array(Vec<Type>),
     /// Record (object) type
-    Record,
+    Record(BTreeMap<String, Type>),
     /// Subject pattern type
     Subject,
+    /// Function type
+    App { args: Vec<Type>, result: Box<Type> },
+}
+
+impl Type {
+    pub fn as_record_or_panic_mut(&mut self) -> &mut BTreeMap<String, Type> {
+        if let Self::Record(r) = self {
+            return r;
+        }
+
+        panic!("expected record type, got {:?}", self);
+    }
+
+    /// Checks if two types are the same.
+    ///
+    /// * If `self` is `Type::Unspecified` then `self` is updated to the more specific `Type`.
+    /// * If `self` is `Type::Subject` and is checked against a `Type::String` then `self` is updated to `Type::String`
+    pub fn check(self, attrs: &Attrs, other: Type) -> Result<Type, AnalysisError> {
+        match (self, other) {
+            (Self::Unspecified, other) => Ok(other),
+            (this, Self::Unspecified) => Ok(this),
+            (Self::Subject, Self::Subject) => Ok(Self::Subject),
+
+            // Subjects are strings so there is no reason to reject a type
+            // when compared to a string. However, when it happens, we demote
+            // a subject to a string.
+            (Self::Subject, Self::String) => Ok(Self::String),
+            (Self::String, Self::Subject) => Ok(Self::String),
+
+            (Self::Number, Self::Number) => Ok(Self::Number),
+            (Self::String, Self::String) => Ok(Self::String),
+            (Self::Bool, Self::Bool) => Ok(Self::Bool),
+
+            (Self::Array(mut a), Self::Array(b)) if a.len() == b.len() => {
+                if a.is_empty() {
+                    return Ok(Self::Array(a));
+                }
+
+                for (a, b) in a.iter_mut().zip(b.into_iter()) {
+                    let tmp = mem::take(a);
+                    *a = tmp.check(attrs, b)?;
+                }
+
+                Ok(Self::Array(a))
+            }
+
+            (Self::Record(mut a), Self::Record(b)) if a.len() == b.len() => {
+                if a.is_empty() {
+                    return Ok(Self::Record(a));
+                }
+
+                for (ak, bk) in a.keys().zip(b.keys()) {
+                    if ak != bk {
+                        return Err(AnalysisError::TypeMismatch(
+                            attrs.pos.line,
+                            attrs.pos.col,
+                            Self::Record(a),
+                            Self::Record(b),
+                        ));
+                    }
+                }
+
+                for (av, bv) in a.values_mut().zip(b.into_values()) {
+                    let a = mem::take(av);
+                    *av = a.check(attrs, bv)?;
+                }
+
+                Ok(Self::Record(a))
+            }
+
+            (
+                Self::App {
+                    args: mut a_args,
+                    result: mut a_res,
+                },
+                Self::App {
+                    args: b_args,
+                    result: b_res,
+                },
+            ) if a_args.len() == b_args.len() => {
+                if a_args.is_empty() {
+                    let tmp = mem::take(a_res.as_mut());
+                    *a_res = tmp.check(attrs, *b_res)?;
+                    return Ok(Self::App {
+                        args: a_args,
+                        result: a_res,
+                    });
+                }
+
+                for (a, b) in a_args.iter_mut().zip(b_args.into_iter()) {
+                    let tmp = mem::take(a);
+                    *a = tmp.check(attrs, b)?;
+                }
+
+                let tmp = mem::take(a_res.as_mut());
+                *a_res = tmp.check(attrs, *b_res)?;
+
+                Ok(Self::App {
+                    args: a_args,
+                    result: a_res,
+                })
+            }
+
+            (this, other) => Err(AnalysisError::TypeMismatch(
+                attrs.pos.line,
+                attrs.pos.col,
+                this,
+                other,
+            )),
+        }
+    }
 }
 
 /// Attributes attached to each expression node.
@@ -75,20 +193,12 @@ pub enum Type {
 pub struct Attrs {
     /// Source position of this expression
     pub pos: Pos,
-    /// Scope level (0 for top-level, incremented for subqueries)
-    pub scope: u64,
-    /// Type of this expression
-    pub tpe: Type,
 }
 
 impl Attrs {
     /// Create new attributes with unspecified type.
-    pub fn new(pos: Pos, scope: u64) -> Self {
-        Self {
-            pos,
-            scope,
-            tpe: Type::Unspecified,
-        }
+    pub fn new(pos: Pos) -> Self {
+        Self { pos }
     }
 }
 
@@ -212,6 +322,18 @@ pub enum Value {
     Group(Box<Expr>),
 }
 
+/// A source binding. A name attached to a source of events.
+///
+/// # Examples
+/// in `FROM e IN events`, `e` is the binding.
+#[derive(Debug, Clone, Serialize)]
+pub struct Binding {
+    /// Name attached to a source of events
+    pub name: String,
+    /// Position in the source code where that binding was introduced
+    pub pos: Pos,
+}
+
 /// A data source in a FROM clause.
 ///
 /// Sources specify where data comes from in a query. Each source has a binding
@@ -223,11 +345,11 @@ pub enum Value {
 /// - `binding`: `"e"`
 /// - `kind`: `SourceKind::Name("events")`
 #[derive(Debug, Clone, Serialize)]
-pub struct Source {
+pub struct Source<A> {
     /// Variable name bound to this source
-    pub binding: String,
+    pub binding: Binding,
     /// What this source represents
-    pub kind: SourceKind,
+    pub kind: SourceKind<A>,
 }
 
 /// The kind of data source.
@@ -237,13 +359,13 @@ pub struct Source {
 /// - Subject patterns (e.g., `FROM e IN "users/john"`)
 /// - Subqueries (e.g., `FROM e IN (SELECT ...)`)
 #[derive(Debug, Clone, Serialize)]
-pub enum SourceKind {
+pub enum SourceKind<A> {
     /// Named source (identifier)
     Name(String),
     /// Subject pattern (string literal used as event subject pattern)
     Subject(String),
     /// Nested subquery
-    Subquery(Box<Query>),
+    Subquery(Box<Query<A>>),
 }
 
 /// ORDER BY clause specification.
@@ -309,6 +431,12 @@ pub enum Limit {
     Top(u64),
 }
 
+/// Represents the state of a query that only has a valid syntax. There are no guarantee that all
+/// the variables exists or that the query is sound. For example, if the user is asking for an event
+/// that has field that should be a string or a number at the same time.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct Raw;
+
 /// A complete EventQL query.
 ///
 /// This is the root node of the AST, representing a full query with all its clauses.
@@ -345,11 +473,11 @@ pub enum Limit {
 /// assert!(query.limit.is_some());
 /// ```
 #[derive(Debug, Clone, Serialize)]
-pub struct Query {
+pub struct Query<A> {
     /// Metadata about this query
     pub attrs: Attrs,
     /// FROM clause sources (must have at least one)
-    pub sources: Vec<Source>,
+    pub sources: Vec<Source<A>>,
     /// Optional WHERE clause filter predicate
     pub predicate: Option<Expr>,
     /// Optional GROUP BY clause expression
@@ -362,4 +490,33 @@ pub struct Query {
     pub projection: Expr,
     /// Remove duplicate rows from the query's results
     pub distinct: bool,
+    /// Type-level metadata about the query's analysis state.
+    ///
+    /// This field uses a generic type parameter to track whether the query
+    /// is in a raw (unparsed/untyped) state or has been statically analyzed:
+    /// - `Query<Raw>`: Query parsed but not yet type-checked
+    /// - `Query<Typed>`: Query that has passed static analysis with validated
+    ///   types and variable scopes
+    ///
+    /// This provides compile-time guarantees about the query's type safety.
+    pub meta: A,
+}
+
+impl Query<Raw> {
+    /// Performs static analysis on this raw query.
+    ///
+    /// This is a convenience method that runs type checking and variable scoping
+    /// analysis on the query, converting it from a raw (untyped) query to a
+    /// typed query.
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - Configuration containing type information and default scope
+    ///
+    /// # Returns
+    ///
+    /// Returns a typed query on success, or an error if type checking fails.
+    pub fn run_static_analysis(self, options: &AnalysisOptions) -> crate::Result<Query<Typed>> {
+        static_analysis(options, self).map_err(Error::Analysis)
+    }
 }

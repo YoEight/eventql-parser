@@ -1,0 +1,11 @@
+---
+source: src/tests/analysis.rs
+expression: "query.run_static_analysis(&Default::default())"
+---
+Err:
+  Analysis:
+    TypeMismatch:
+      - 2
+      - 48
+      - String
+      - Number

@@ -6,10 +6,12 @@ attrs:
   pos:
     line: 1
     col: 1
-  scope: 1
-  tpe: Unspecified
 sources:
-  - binding: e
+  - binding:
+      name: e
+      pos:
+        line: 1
+        col: 6
     kind:
       Name: events
 predicate:
@@ -17,8 +19,6 @@ predicate:
     pos:
       line: 2
       col: 7
-    scope: 1
-    tpe: Unspecified
   value:
     Binary:
       lhs:
@@ -26,8 +26,6 @@ predicate:
           pos:
             line: 2
             col: 7
-          scope: 1
-          tpe: Unspecified
         value:
           Binary:
             lhs:
@@ -35,8 +33,6 @@ predicate:
                 pos:
                   line: 2
                   col: 7
-                scope: 1
-                tpe: Unspecified
               value:
                 Binary:
                   lhs:
@@ -44,8 +40,6 @@ predicate:
                       pos:
                         line: 2
                         col: 7
-                      scope: 1
-                      tpe: Unspecified
                     value:
                       Access:
                         target:
@@ -53,8 +47,6 @@ predicate:
                             pos:
                               line: 2
                               col: 7
-                            scope: 1
-                            tpe: Unspecified
                           value:
                             Access:
                               target:
@@ -62,8 +54,6 @@ predicate:
                                   pos:
                                     line: 2
                                     col: 7
-                                  scope: 1
-                                  tpe: Unspecified
                                 value:
                                   Id: e
                               field: data
@@ -74,8 +64,6 @@ predicate:
                       pos:
                         line: 2
                         col: 21
-                      scope: 1
-                      tpe: Unspecified
                     value:
                       String: foobar
             operator: And
@@ -84,8 +72,6 @@ predicate:
                 pos:
                   line: 2
                   col: 34
-                scope: 1
-                tpe: Unspecified
               value:
                 Binary:
                   lhs:
@@ -93,8 +79,6 @@ predicate:
                       pos:
                         line: 2
                         col: 34
-                      scope: 1
-                      tpe: Unspecified
                     value:
                       Access:
                         target:
@@ -102,8 +86,6 @@ predicate:
                             pos:
                               line: 2
                               col: 34
-                            scope: 1
-                            tpe: Unspecified
                           value:
                             Access:
                               target:
@@ -111,8 +93,6 @@ predicate:
                                   pos:
                                     line: 2
                                     col: 34
-                                  scope: 1
-                                  tpe: Unspecified
                                 value:
                                   Id: e
                               field: data
@@ -123,8 +103,6 @@ predicate:
                       pos:
                         line: 2
                         col: 48
-                      scope: 1
-                      tpe: Unspecified
                     value:
                       Number: 42
       operator: Or
@@ -133,8 +111,6 @@ predicate:
           pos:
             line: 2
             col: 54
-          scope: 1
-          tpe: Unspecified
         value:
           Binary:
             lhs:
@@ -142,8 +118,6 @@ predicate:
                 pos:
                   line: 2
                   col: 54
-                scope: 1
-                tpe: Unspecified
               value:
                 Access:
                   target:
@@ -151,8 +125,6 @@ predicate:
                       pos:
                         line: 2
                         col: 54
-                      scope: 1
-                      tpe: Unspecified
                     value:
                       Access:
                         target:
@@ -160,8 +132,6 @@ predicate:
                             pos:
                               line: 2
                               col: 54
-                            scope: 1
-                            tpe: Unspecified
                           value:
                             Id: e
                         field: data
@@ -172,8 +142,6 @@ predicate:
                 pos:
                   line: 2
                   col: 68
-                scope: 1
-                tpe: Unspecified
               value:
                 Number: 123
 group_by: ~
@@ -184,8 +152,7 @@ projection:
     pos:
       line: 3
       col: 14
-    scope: 1
-    tpe: Unspecified
   value:
     Id: e
 distinct: false
+meta: ~
