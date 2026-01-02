@@ -19,6 +19,7 @@ A complete lexer and parser for EventQL (EQL), a query language designed for eve
 - **Rich Expression Language**: Supports arithmetic, comparison, logical operators, and field access
 - **Detailed Error Reporting**: Position-aware error messages with line and column numbers
 - **Type-Safe AST**: Strongly-typed abstract syntax tree for query analysis and execution
+- **Static Analysis**: Provides optional static analysis to catch even more errors before running a query
 
 ## Quick Start
 
