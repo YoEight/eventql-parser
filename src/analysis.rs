@@ -542,7 +542,7 @@ impl<'a> Analysis<'a> {
         &mut self,
         attrs: &Attrs,
         value: &Value,
-        expect: Type,
+        mut expect: Type,
     ) -> AnalysisResult<Type> {
         match value {
             Value::Number(_) => expect.check(attrs, Type::Number),
@@ -566,19 +566,22 @@ impl<'a> Analysis<'a> {
                 }
             }
 
-            this @ Value::Array(exprs) => {
+            Value::Array(exprs) => {
                 if matches!(expect, Type::Unspecified) {
-                    return Ok(self.project_type(this));
+                    for expr in exprs {
+                        expect = self.analyze_expr(expr, expect)?;
+                    }
+
+                    return Ok(Type::Array(Box::new(expect)));
                 }
 
                 match expect {
-                    Type::Array(mut types) if exprs.len() == types.len() => {
-                        for (expr, expect) in exprs.iter().zip(types.iter_mut()) {
-                            let tmp = mem::take(expect);
-                            *expect = self.analyze_expr(expr, tmp)?;
+                    Type::Array(mut expect) => {
+                        for expr in exprs {
+                            *expect = self.analyze_expr(expr, expect.as_ref().clone())?;
                         }
 
-                        Ok(Type::Array(types))
+                        Ok(Type::Array(expect))
                     }
 
                     expect => Err(AnalysisError::TypeMismatch(
@@ -590,9 +593,22 @@ impl<'a> Analysis<'a> {
                 }
             }
 
-            this @ Value::Record(fields) => {
+            Value::Record(fields) => {
                 if matches!(expect, Type::Unspecified) {
-                    return Ok(self.project_type(this));
+                    let mut record = BTreeMap::new();
+
+                    for field in fields {
+                        record.insert(
+                            field.name.clone(),
+                            self.analyze_value(
+                                &field.value.attrs,
+                                &field.value.value,
+                                Type::Unspecified,
+                            )?,
+                        );
+                    }
+
+                    return Ok(Type::Record(record));
                 }
 
                 match expect {
@@ -687,6 +703,34 @@ impl<'a> Analysis<'a> {
                         && !matches!(rhs_expect, Type::Unspecified)
                     {
                         self.analyze_expr(&binary.lhs, rhs_expect)?;
+                    }
+
+                    expect.check(attrs, Type::Bool)
+                }
+
+                Operator::Contains => {
+                    let lhs_expect =
+                        self.analyze_expr(&binary.lhs, Type::Array(Box::new(Type::Unspecified)))?;
+
+                    let lhs_assumption = match lhs_expect {
+                        Type::Array(inner) => *inner,
+                        other => {
+                            return Err(AnalysisError::ExpectArray(
+                                attrs.pos.line,
+                                attrs.pos.col,
+                                other,
+                            ));
+                        }
+                    };
+
+                    let rhs_expect = self.analyze_expr(&binary.rhs, lhs_assumption.clone())?;
+
+                    // If the left side didn't have enough type information while the other did,
+                    // we replay another typecheck pass on the left side if the right side was conclusive
+                    if matches!(lhs_assumption, Type::Unspecified)
+                        && !matches!(rhs_expect, Type::Unspecified)
+                    {
+                        self.analyze_expr(&binary.lhs, Type::Array(Box::new(rhs_expect)))?;
                     }
 
                     expect.check(attrs, Type::Bool)
@@ -914,7 +958,18 @@ impl<'a> Analysis<'a> {
                 }
             }
             Value::Array(exprs) => {
-                Type::Array(exprs.iter().map(|v| self.project_type(&v.value)).collect())
+                let mut project = Type::Unspecified;
+
+                for expr in exprs {
+                    let tmp = self.project_type(&expr.value);
+
+                    if !matches!(tmp, Type::Unspecified) {
+                        project = tmp;
+                        break;
+                    }
+                }
+
+                Type::Array(Box::new(project))
             }
             Value::Record(fields) => Type::Record(
                 fields
@@ -951,7 +1006,8 @@ impl<'a> Analysis<'a> {
                 | Operator::And
                 | Operator::Or
                 | Operator::Xor
-                | Operator::Not => Type::Bool,
+                | Operator::Not
+                | Operator::Contains => Type::Bool,
             },
             Value::Unary(unary) => match unary.operator {
                 Operator::Add | Operator::Sub => Type::Number,
@@ -966,7 +1022,8 @@ impl<'a> Analysis<'a> {
                 | Operator::And
                 | Operator::Or
                 | Operator::Xor
-                | Operator::Not => unreachable!(),
+                | Operator::Not
+                | Operator::Contains => unreachable!(),
             },
             Value::Group(expr) => self.project_type(&expr.value),
         }

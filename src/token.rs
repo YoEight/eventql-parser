@@ -94,6 +94,8 @@ pub enum Operator {
     Xor,
     /// Logical NOT operator
     Not,
+    /// Containment (`array CONTAINS value`)
+    Contains,
 }
 
 impl Display for Operator {
@@ -113,6 +115,7 @@ impl Display for Operator {
             Operator::Or => write!(f, "OR"),
             Operator::Xor => write!(f, "XOR"),
             Operator::Not => write!(f, "NOT"),
+            Operator::Contains => write!(f, "CONTAINS"),
         }
     }
 }

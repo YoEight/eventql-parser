@@ -54,7 +54,6 @@ impl From<Token<'_>> for Pos {
 /// Type information for expressions.
 ///
 /// This enum represents the type of an expression in the E
-
 #[derive(Clone, PartialEq, Eq, Debug, Default, Serialize)]
 pub enum Type {
     /// Type has not been determined yet
@@ -67,7 +66,7 @@ pub enum Type {
     /// Boolean type
     Bool,
     /// Array type
-    Array(Vec<Type>),
+    Array(Box<Type>),
     /// Record (object) type
     Record(BTreeMap<String, Type>),
     /// Subject pattern type
@@ -104,17 +103,8 @@ impl Type {
             (Self::Number, Self::Number) => Ok(Self::Number),
             (Self::String, Self::String) => Ok(Self::String),
             (Self::Bool, Self::Bool) => Ok(Self::Bool),
-
-            (Self::Array(mut a), Self::Array(b)) if a.len() == b.len() => {
-                if a.is_empty() {
-                    return Ok(Self::Array(a));
-                }
-
-                for (a, b) in a.iter_mut().zip(b.into_iter()) {
-                    let tmp = mem::take(a);
-                    *a = tmp.check(attrs, b)?;
-                }
-
+            (Self::Array(mut a), Self::Array(b)) => {
+                *a = a.as_ref().clone().check(attrs, *b)?;
                 Ok(Self::Array(a))
             }
 

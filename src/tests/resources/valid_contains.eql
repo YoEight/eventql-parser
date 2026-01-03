@@ -1,0 +1,3 @@
+FROM e in events
+WHERE [1,2,3] CONTAINS e.data.price
+PROJECT INTO e
