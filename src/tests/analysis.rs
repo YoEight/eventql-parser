@@ -32,3 +32,15 @@ fn test_rename_subquery() {
     let query = parse_query(include_str!("./resources/rename_subquery.eql")).unwrap();
     insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
 }
+
+#[test]
+fn test_analyze_valid_contains() {
+    let query = parse_query(include_str!("./resources/valid_contains.eql")).unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}
+
+#[test]
+fn test_analyze_invalid_type_contains() {
+    let query = parse_query(include_str!("./resources/invalid_type_contains.eql")).unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}
