@@ -8,7 +8,7 @@
 [crates-badge]: https://img.shields.io/crates/v/eventql-parser.svg
 [crates-download]: https://img.shields.io/crates/d/eventql-parser.svg
 [crates-url]: https://crates.io/crates/eventql-parser
-[ci-badge]: https://github.com/YoEight/eventql-parser/workflows/Rust/badge.svg
+[ci-badge]: https://github.com/YoEight/eventql-parser/workflows/CI/badge.svg
 [ci-url]: https://github.com/YoEight/eventql-parser/actions
 
 A complete lexer and parser for EventQL (EQL), a query language designed for event sourcing systems.
