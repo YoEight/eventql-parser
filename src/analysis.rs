@@ -542,7 +542,7 @@ impl<'a> Analysis<'a> {
         &mut self,
         attrs: &Attrs,
         value: &Value,
-        expect: Type,
+        mut expect: Type,
     ) -> AnalysisResult<Type> {
         match value {
             Value::Number(_) => expect.check(attrs, Type::Number),
@@ -566,30 +566,23 @@ impl<'a> Analysis<'a> {
                 }
             }
 
-            this @ Value::Array(exprs) => {
+            Value::Array(exprs) => {
                 if matches!(expect, Type::Unspecified) {
-                    return Ok(self.project_type(this));
+                    for expr in exprs {
+                        expect = self.analyze_expr(expr, expect)?;
+                    }
+
+                    return Ok(Type::Array(Box::new(expect)));
                 }
 
                 match expect {
-                    Type::Array(Some(mut types)) if exprs.len() == types.len() => {
-                        for (expr, expect) in exprs.iter().zip(types.iter_mut()) {
-                            let tmp = mem::take(expect);
-                            *expect = self.analyze_expr(expr, tmp)?;
+                    Type::Array(mut expect) => {
+                        for expr in exprs {
+                            *expect = self.analyze_expr(expr, expect.as_ref().clone())?;
                         }
 
-                        Ok(Type::Array(Some(types)))
+                        Ok(Type::Array(expect))
                     }
-
-                    Type::Array(None) => match self.project_type(this) {
-                        Type::Array(Some(types)) => Ok(Type::Array(Some(types))),
-                        other => Err(AnalysisError::TypeMismatch(
-                            attrs.pos.line,
-                            attrs.pos.col,
-                            expect,
-                            other,
-                        )),
-                    },
 
                     expect => Err(AnalysisError::TypeMismatch(
                         attrs.pos.line,
@@ -600,9 +593,22 @@ impl<'a> Analysis<'a> {
                 }
             }
 
-            this @ Value::Record(fields) => {
+            Value::Record(fields) => {
                 if matches!(expect, Type::Unspecified) {
-                    return Ok(self.project_type(this));
+                    let mut record = BTreeMap::new();
+
+                    for field in fields {
+                        record.insert(
+                            field.name.clone(),
+                            self.analyze_value(
+                                &field.value.attrs,
+                                &field.value.value,
+                                Type::Unspecified,
+                            )?,
+                        );
+                    }
+
+                    return Ok(Type::Record(record));
                 }
 
                 match expect {
@@ -703,7 +709,8 @@ impl<'a> Analysis<'a> {
                 }
 
                 Operator::Contains => {
-                    let lhs_expect = self.analyze_expr(&binary.lhs, Type::Array(None))?;
+                    let lhs_expect =
+                        self.analyze_expr(&binary.lhs, Type::Array(Box::new(Type::Unspecified)))?;
 
                     if !matches!(lhs_expect, Type::Array(_) | Type::Unspecified) {
                         return Err(AnalysisError::ExpectArray(
@@ -713,16 +720,9 @@ impl<'a> Analysis<'a> {
                         ));
                     }
 
-                    let lhs_assumption = if let Type::Array(Some(elems)) = &lhs_expect {
-                        let mut inner_type = Type::default();
-
-                        for tpe in elems.iter().cloned() {
-                            inner_type = inner_type.check(attrs, tpe)?;
-                        }
-
-                        inner_type
-                    } else {
-                        Type::Unspecified
+                    let lhs_assumption = match lhs_expect {
+                        Type::Array(inner) => *inner,
+                        _ => unreachable!("we made sure that we expect an array at this point"),
                     };
 
                     let rhs_expect = self.analyze_expr(&binary.rhs, lhs_assumption.clone())?;
@@ -732,7 +732,7 @@ impl<'a> Analysis<'a> {
                     if matches!(lhs_assumption, Type::Unspecified)
                         && !matches!(rhs_expect, Type::Unspecified)
                     {
-                        // TODO - check if lhs_expect was Type::Array(None) and act accordingly
+                        self.analyze_expr(&binary.lhs, Type::Array(Box::new(rhs_expect)))?;
                     }
 
                     expect.check(attrs, Type::Bool)
@@ -959,13 +959,20 @@ impl<'a> Analysis<'a> {
                     Type::Unspecified
                 }
             }
-            Value::Array(exprs) => Type::Array(
-                exprs
-                    .iter()
-                    .map(|v| self.project_type(&v.value))
-                    .collect::<Vec<_>>()
-                    .into(),
-            ),
+            Value::Array(exprs) => {
+                let mut project = Type::Unspecified;
+
+                for expr in exprs {
+                    let tmp = self.project_type(&expr.value);
+
+                    if !matches!(tmp, Type::Unspecified) {
+                        project = tmp;
+                        break;
+                    }
+                }
+
+                Type::Array(Box::new(project))
+            }
             Value::Record(fields) => Type::Record(
                 fields
                     .iter()

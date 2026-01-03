@@ -51,54 +51,9 @@ impl From<Token<'_>> for Pos {
     }
 }
 
-// #[derive(Default, Clone, PartialEq, Eq, Debug, Serialize)]
-// pub struct ArrayType {
-//     pub elems: Vec<Type>,
-//     pub unknown: bool,
-// }
-
-// impl ArrayType {
-//     pub fn unknown() -> Self {
-//         Self {
-//             unknown: true,
-//             ..Self::default()
-//         }
-//     }
-
-//     pub fn len(&self) -> usize {
-//         self.elems.len()
-//     }
-
-//     pub fn is_empty(&self) -> bool {
-//         self.elems.is_empty()
-//     }
-
-//     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Type> {
-//         self.elems.iter_mut()
-//     }
-
-//     pub fn iter(&self) -> impl Iterator<Item = &Type> {
-//         self.elems.iter()
-//     }
-
-//     pub fn into_iter(self) -> impl Iterator<Item = Type> {
-//         self.elems.into_iter()
-//     }
-// }
-
-// impl From<Vec<Type>> for ArrayType {
-//     fn from(elems: Vec<Type>) -> Self {
-//         Self {
-//             elems,
-//             unknown: false,
-//         }
-//     }
-// }
-
 /// Type information for expressions.
 ///
 /// This enum represents the type of an expression in the E
-
 #[derive(Clone, PartialEq, Eq, Debug, Default, Serialize)]
 pub enum Type {
     /// Type has not been determined yet
@@ -111,7 +66,7 @@ pub enum Type {
     /// Boolean type
     Bool,
     /// Array type
-    Array(Option<Vec<Type>>),
+    Array(Box<Type>),
     /// Record (object) type
     Record(BTreeMap<String, Type>),
     /// Subject pattern type
@@ -148,24 +103,10 @@ impl Type {
             (Self::Number, Self::Number) => Ok(Self::Number),
             (Self::String, Self::String) => Ok(Self::String),
             (Self::Bool, Self::Bool) => Ok(Self::Bool),
-
-            (Self::Array(Some(mut a)), Self::Array(Some(b))) if a.len() == b.len() => {
-                if a.is_empty() {
-                    return Ok(Self::Array(Some(a)));
-                }
-
-                for (a, b) in a.iter_mut().zip(b.into_iter()) {
-                    let tmp = mem::take(a);
-                    *a = tmp.check(attrs, b)?;
-                }
-
-                Ok(Self::Array(Some(a)))
+            (Self::Array(mut a), Self::Array(b)) => {
+                *a = a.as_ref().clone().check(attrs, *b)?;
+                Ok(Self::Array(a))
             }
-
-            (Self::Array(None), Self::Array(None)) => Ok(Self::Array(None)),
-
-            (Self::Array(Some(a)), Self::Array(None))
-            | (Self::Array(None), Self::Array(Some(a))) => Ok(Self::Array(Some(a))),
 
             (Self::Record(mut a), Self::Record(b)) if a.len() == b.len() => {
                 if a.is_empty() {
