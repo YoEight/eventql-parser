@@ -712,17 +712,15 @@ impl<'a> Analysis<'a> {
                     let lhs_expect =
                         self.analyze_expr(&binary.lhs, Type::Array(Box::new(Type::Unspecified)))?;
 
-                    if !matches!(lhs_expect, Type::Array(_) | Type::Unspecified) {
-                        return Err(AnalysisError::ExpectArray(
-                            attrs.pos.line,
-                            attrs.pos.col,
-                            lhs_expect,
-                        ));
-                    }
-
                     let lhs_assumption = match lhs_expect {
                         Type::Array(inner) => *inner,
-                        _ => unreachable!("we made sure that we expect an array at this point"),
+                        other => {
+                            return Err(AnalysisError::ExpectArray(
+                                attrs.pos.line,
+                                attrs.pos.col,
+                                other,
+                            ));
+                        }
                     };
 
                     let rhs_expect = self.analyze_expr(&binary.rhs, lhs_assumption.clone())?;
