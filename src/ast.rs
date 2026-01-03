@@ -73,6 +73,14 @@ pub enum Type {
     Subject,
     /// Function type
     App { args: Vec<Type>, result: Box<Type> },
+    /// A date (e.g 2026-01-03)
+    Date,
+    /// Time (e.g 13:45:39)
+    Time,
+    /// A DateTime (e.g 2026-01-01T13:45:39Z).
+    DateTime,
+    /// A type that is not defined in the EventQL reference
+    Custom(String),
 }
 
 impl Type {
@@ -103,6 +111,12 @@ impl Type {
             (Self::Number, Self::Number) => Ok(Self::Number),
             (Self::String, Self::String) => Ok(Self::String),
             (Self::Bool, Self::Bool) => Ok(Self::Bool),
+            (Self::Date, Self::Date) => Ok(Self::Date),
+            (Self::Time, Self::Time) => Ok(Self::Time),
+            (Self::DateTime, Self::DateTime) => Ok(Self::DateTime),
+            (Self::Custom(a), Self::Custom(b)) if a.eq_ignore_ascii_case(b.as_str()) => {
+                Ok(Self::Custom(a))
+            }
             (Self::Array(mut a), Self::Array(b)) => {
                 *a = a.as_ref().clone().check(attrs, *b)?;
                 Ok(Self::Array(a))

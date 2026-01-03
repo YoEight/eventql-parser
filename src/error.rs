@@ -83,6 +83,15 @@ pub enum ParserError {
     #[error("{0}:{1}: unexpected token {2}")]
     UnexpectedToken(u32, u32, String),
 
+    /// Expected a type name but found something else.
+    ///
+    /// Fields: `(line, column, found_token)`
+    ///
+    /// This occurs when defining a type conversion operation but the left side is
+    /// not a type.
+    #[error("{0}:{1}: expected a type")]
+    ExpectedType(u32, u32),
+
     /// The input ended unexpectedly while parsing.
     ///
     /// This occurs when the parser expects more tokens but encounters

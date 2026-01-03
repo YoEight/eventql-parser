@@ -147,6 +147,8 @@ fn ident(input: Text) -> IResult<Text, Token> {
                 Sym::Operator(Operator::Not)
             } else if value.fragment().eq_ignore_ascii_case("contains") {
                 Sym::Operator(Operator::Contains)
+            } else if value.fragment().eq_ignore_ascii_case("as") {
+                Sym::Operator(Operator::As)
             } else {
                 Sym::Id(value.fragment())
             };

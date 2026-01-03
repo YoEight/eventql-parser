@@ -15,6 +15,7 @@ edition = "2024"
 thiserror = "2"
 nom = "8"
 nom_locate = "5"
+unicase = "2"
 
 [dependencies.serde]
 version = "1"
