@@ -193,3 +193,21 @@ pub enum AnalysisError {
     #[error("{0}:{1}: unsupported custom type '{2}'")]
     UnsupportedCustomType(u32, u32, String),
 }
+
+impl From<LexerError> for Error {
+    fn from(value: LexerError) -> Self {
+        Self::Lexer(value)
+    }
+}
+
+impl From<ParserError> for Error {
+    fn from(value: ParserError) -> Self {
+        Self::Parser(value)
+    }
+}
+
+impl From<AnalysisError> for Error {
+    fn from(value: AnalysisError) -> Self {
+        Self::Analysis(value)
+    }
+}

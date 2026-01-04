@@ -12,10 +12,8 @@ mod parser;
 mod tests;
 mod token;
 
-use crate::error::{Error, LexerError};
 use crate::prelude::{parse, tokenize};
 pub use ast::*;
-use nom::Err;
 
 /// Convenience module that re-exports all public types and functions.
 ///
@@ -63,17 +61,6 @@ pub type Result<A> = std::result::Result<A, error::Error>;
 /// }
 /// ```
 pub fn parse_query(input: &str) -> Result<Query<Raw>> {
-    let tokens = tokenize(input).map_err(|e| match e {
-        Err::Incomplete(_) => Error::Lexer(LexerError::IncompleteInput),
-        Err::Error(x) => Error::Lexer(LexerError::InvalidSymbol(
-            x.input.location_line(),
-            x.input.get_column() as u32,
-        )),
-        Err::Failure(x) => Error::Lexer(LexerError::InvalidSymbol(
-            x.input.location_line(),
-            x.input.get_column() as u32,
-        )),
-    })?;
-
-    parse(tokens.as_slice()).map_err(Error::Parser)
+    let tokens = tokenize(input)?;
+    Ok(parse(tokens.as_slice())?)
 }

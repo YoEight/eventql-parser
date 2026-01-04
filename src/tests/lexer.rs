@@ -9,3 +9,8 @@ fn test_lexer_all_kind() {
 fn test_lexer_negative_number() {
     insta::assert_yaml_snapshot!(tokenize("-123.456").unwrap());
 }
+
+#[test]
+fn test_lexer_comment() {
+    insta::assert_yaml_snapshot!(tokenize("// useless comment\n "));
+}

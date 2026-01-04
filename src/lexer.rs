@@ -7,13 +7,15 @@
 //! # Main Function
 //!
 //! - [`tokenize`] - Convert a query string into a vector of tokens
+use crate::error::LexerError;
 use crate::token::{Operator, Sym, Symbol, Text, Token};
 use nom::branch::alt;
-use nom::bytes::complete::take_while;
-use nom::character::complete::{alpha1, alphanumeric0, char, multispace0};
+use nom::bytes::complete::{tag, take_while};
+use nom::character::complete::{alpha1, alphanumeric0, char, multispace1};
 use nom::character::one_of;
 use nom::combinator::{eof, opt, recognize};
 use nom::error::{Error, context};
+use nom::multi::many0;
 use nom::number::complete::double;
 use nom::sequence::{delimited, pair};
 use nom::{IResult, Parser};
@@ -31,12 +33,12 @@ use nom::{IResult, Parser};
 /// - **Strings**: Double-quoted string literals (e.g., `"hello"`)
 /// - **Operators**: Arithmetic (`+`, `-`, `*`, `/`), comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`), logical (`AND`, `OR`, `XOR`, `NOT`)
 /// - **Symbols**: Structural characters (`(`, `)`, `[`, `]`, `{`, `}`, `.`, `,`, `:`)
-pub fn tokenize(input: &str) -> Result<Vec<Token<'_>>, nom::Err<Error<Text<'_>>>> {
+pub fn tokenize(input: &str) -> Result<Vec<Token<'_>>, LexerError> {
     let mut input = Text::new(input);
     let mut tokens = Vec::new();
 
     loop {
-        let (remaining, token) = token(input)?;
+        let (remaining, token) = token(input).map_err(massage_nom_error)?;
         input = remaining;
 
         tokens.push(token);
@@ -49,13 +51,41 @@ pub fn tokenize(input: &str) -> Result<Vec<Token<'_>>, nom::Err<Error<Text<'_>>>
     Ok(tokens)
 }
 
+fn massage_nom_error(err: nom::Err<Error<Text>>) -> LexerError {
+    match err {
+        nom::Err::Incomplete(_) => LexerError::IncompleteInput,
+        nom::Err::Error(err) => {
+            LexerError::InvalidSymbol(err.input.location_line(), err.input.get_column() as u32)
+        }
+        nom::Err::Failure(err) => {
+            LexerError::InvalidSymbol(err.input.location_line(), err.input.get_column() as u32)
+        }
+    }
+}
+
 fn token(input: Text) -> IResult<Text, Token> {
     delimited(
-        multispace0,
-        alt((end_of_file, symbol, operator, ident, number, string)),
-        multispace0,
+        skip_whitespace_and_comments,
+        parse_token,
+        skip_whitespace_and_comments,
     )
     .parse(input)
+}
+
+fn skip_whitespace_and_comments(input: Text) -> IResult<Text, Text> {
+    recognize(many0(alt((comment, multispace1)))).parse(input)
+}
+
+fn comment(input: Text) -> IResult<Text, Text> {
+    recognize(pair(
+        pair(tag("//"), take_while(|c: char| c != '\n' && c != '\r')),
+        opt(alt((tag("\r\n"), tag("\n"), tag("\r")))),
+    ))
+    .parse(input)
+}
+
+fn parse_token(input: Text) -> IResult<Text, Token> {
+    alt((end_of_file, symbol, operator, ident, number, string)).parse(input)
 }
 
 fn symbol(input: Text) -> IResult<Text, Token> {

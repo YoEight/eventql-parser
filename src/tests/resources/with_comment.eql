@@ -1,0 +1,7 @@
+// This a comment that should be discarded by the parser
+FROM e IN events
+// This is another line that should be ignored
+WHERE e.source != "foobar"
+// And again another useless comment
+PROJECT INTO e
+// last one for fun
