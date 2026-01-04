@@ -195,6 +195,12 @@ pub enum AnalysisError {
 
     #[error("{0}:{1}: function '{2}' requires {3} parameters but got {4}")]
     FunWrongArgumentCount(u32, u32, String, usize, usize),
+
+    #[error("{0}:{1}: aggregate function '{2}' can only be used in a PROJECT INTO clause")]
+    WrongAggFunUsage(u32, u32, String),
+
+    #[error("{0}:{1}: aggregate functions cannot be used with source-bound fields")]
+    UnallowedAggFuncUsageWithSrcField(u32, u32),
 }
 
 impl From<LexerError> for Error {
