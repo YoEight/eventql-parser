@@ -797,7 +797,7 @@ impl<'a> Analysis<'a> {
 
                 Operator::As => {
                     if let Value::Id(name) = &binary.rhs.value {
-                        if let Some(tpe) = name_to_type(&self.options, name) {
+                        if let Some(tpe) = name_to_type(self.options, name) {
                             // NOTE - we could check if it's safe to convert the left branch to that type
                             return Ok(tpe);
                         } else {
@@ -1070,7 +1070,7 @@ impl<'a> Analysis<'a> {
                 Operator::Add | Operator::Sub | Operator::Mul | Operator::Div => Type::Number,
                 Operator::As => {
                     if let Value::Id(n) = &binary.rhs.as_ref().value
-                        && let Some(tpe) = name_to_type(&self.options, n.as_str())
+                        && let Some(tpe) = name_to_type(self.options, n.as_str())
                     {
                         tpe
                     } else {
@@ -1114,9 +1114,7 @@ impl<'a> Analysis<'a> {
 fn name_to_type(opts: &AnalysisOptions, name: &str) -> Option<Type> {
     if name.eq_ignore_ascii_case("string") {
         Some(Type::String)
-    } else if name.eq_ignore_ascii_case("Int") {
-        Some(Type::Number)
-    } else if name.eq_ignore_ascii_case("float64") {
+    } else if name.eq_ignore_ascii_case("int") || name.eq_ignore_ascii_case("float64") {
         Some(Type::Number)
     } else if name.eq_ignore_ascii_case("boolean") {
         Some(Type::Bool)
