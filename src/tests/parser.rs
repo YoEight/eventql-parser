@@ -84,3 +84,9 @@ fn test_parser_invalid_type_conversion_expr() {
     let tokens = tokenize(include_str!("./resources/invalid_type_conversion_expr.eql")).unwrap();
     insta::assert_yaml_snapshot!(parse(tokens.as_slice()));
 }
+
+#[test]
+fn test_parser_with_comment() {
+    let tokens = tokenize(include_str!("./resources/with_comment.eql")).unwrap();
+    insta::assert_yaml_snapshot!(parse(tokens.as_slice()));
+}

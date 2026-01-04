@@ -1,0 +1,8 @@
+---
+source: src/tests/lexer.rs
+expression: "tokenize(\"// useless comment\\n \")"
+---
+Ok:
+  - sym: Eof
+    line: 2
+    col: 2
