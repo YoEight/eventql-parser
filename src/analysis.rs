@@ -761,7 +761,22 @@ impl<'a> Analysis<'a> {
                 }
 
                 Operator::As => {
-                    todo!()
+                    if let Value::Id(name) = &binary.rhs.value {
+                        if let Some(tpe) = name_to_type(&self.options, name) {
+                            // NOTE - we could check if it's safe to convert the left branch to that type
+                            return Ok(tpe);
+                        } else {
+                            return Err(AnalysisError::UnsupportedCustomType(
+                                attrs.pos.line,
+                                attrs.pos.col,
+                                name.clone(),
+                            ));
+                        }
+                    }
+
+                    unreachable!(
+                        "we already made sure during parsing that we can only have an ID symbol at this point"
+                    )
                 }
 
                 Operator::Not => unreachable!(),

@@ -1,4 +1,4 @@
-use crate::parse_query;
+use crate::{parse_query, prelude::AnalysisOptions};
 
 #[test]
 fn test_infer_wrong_where_clause_1() {
@@ -42,5 +42,34 @@ fn test_analyze_valid_contains() {
 #[test]
 fn test_analyze_invalid_type_contains() {
     let query = parse_query(include_str!("./resources/invalid_type_contains.eql")).unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}
+
+#[test]
+fn test_analyze_valid_type_conversion() {
+    let query = parse_query(include_str!("./resources/valid_type_conversion.eql")).unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}
+
+#[test]
+fn test_analyze_invalid_type_conversion_custom_type() {
+    let query = parse_query(include_str!("./resources/type_conversion_custom_type.eql")).unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}
+
+#[test]
+fn test_analyze_valid_type_conversion_custom_type() {
+    let query = parse_query(include_str!("./resources/type_conversion_custom_type.eql")).unwrap();
+    insta::assert_yaml_snapshot!(
+        query.run_static_analysis(&AnalysisOptions::default().add_custom_type("Foobar"))
+    );
+}
+
+#[test]
+fn test_analyze_valid_type_conversion_weird_case() {
+    let query = parse_query(include_str!(
+        "./resources/valid_type_conversion-weird-case.eql"
+    ))
+    .unwrap();
     insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
 }

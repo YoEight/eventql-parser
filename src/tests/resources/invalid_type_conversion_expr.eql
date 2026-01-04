@@ -1,0 +1,3 @@
+FROM e IN events
+FROM f IN subjects
+PROJECT INTO { date: e.data.date as f.type }
