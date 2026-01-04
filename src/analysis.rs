@@ -52,12 +52,47 @@ pub struct AnalysisOptions {
     pub default_scope: Scope,
     /// Type information for event records being queried.
     pub event_type_info: Type,
-    /// Collections of types that are not defined in the EventQL reference but yet
-    /// allow the user to use.
+    /// Custom types that are not defined in the EventQL reference.
+    ///
+    /// This set allows users to register custom type names that can be used
+    /// in type conversion expressions (e.g., `field AS CustomType`). Custom
+    /// type names are case-insensitive.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::AnalysisOptions;
+    ///
+    /// let options = AnalysisOptions::default()
+    ///     .add_custom_type("Foobar");
+    /// ```
     pub custom_types: HashSet<Ascii<String>>,
 }
 
 impl AnalysisOptions {
+    /// Adds a custom type name to the analysis options.
+    ///
+    /// Custom types allow you to use type conversion syntax with types that are
+    /// not part of the standard EventQL type system. The type name is stored
+    /// case-insensitively.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The custom type name to register
+    ///
+    /// # Returns
+    ///
+    /// Returns `self` to allow for method chaining.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::AnalysisOptions;
+    ///
+    /// let options = AnalysisOptions::default()
+    ///     .add_custom_type("Timestamp")
+    ///     .add_custom_type("UUID");
+    /// ```
     pub fn add_custom_type<'a>(mut self, value: impl Into<Cow<'a, str>>) -> Self {
         match value.into() {
             Cow::Borrowed(t) => self.custom_types.insert(Ascii::new(t.to_owned())),

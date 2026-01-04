@@ -73,13 +73,32 @@ pub enum Type {
     Subject,
     /// Function type
     App { args: Vec<Type>, result: Box<Type> },
-    /// A date (e.g 2026-01-03)
+    /// Date type (e.g., `2026-01-03`)
+    ///
+    /// Used when a field is explicitly converted to a date using the `AS DATE` syntax.
     Date,
-    /// Time (e.g 13:45:39)
+    /// Time type (e.g., `13:45:39`)
+    ///
+    /// Used when a field is explicitly converted to a time using the `AS TIME` syntax.
     Time,
-    /// A DateTime (e.g 2026-01-01T13:45:39Z).
+    /// DateTime type (e.g., `2026-01-01T13:45:39Z`)
+    ///
+    /// Used when a field is explicitly converted to a datetime using the `AS DATETIME` syntax.
     DateTime,
-    /// A type that is not defined in the EventQL reference
+    /// Custom type not defined in the EventQL reference
+    ///
+    /// Used when a field is converted to a custom type registered in [`AnalysisOptions::custom_types`].
+    /// The string contains the custom type name as it appears in the query.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::{parse_query, AnalysisOptions};
+    ///
+    /// let query = parse_query("FROM e IN events PROJECT INTO { ts: e.data.timestamp as CustomTimestamp }").unwrap();
+    /// let options = AnalysisOptions::default().add_custom_type("CustomTimestamp");
+    /// let typed_query = query.run_static_analysis(&options).unwrap();
+    /// ```
     Custom(String),
 }
 
