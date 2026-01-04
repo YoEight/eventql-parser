@@ -72,7 +72,11 @@ pub enum Type {
     /// Subject pattern type
     Subject,
     /// Function type
-    App { args: Vec<Type>, result: Box<Type>, aggregate: bool },
+    App {
+        args: Vec<Type>,
+        result: Box<Type>,
+        aggregate: bool,
+    },
     /// Date type (e.g., `2026-01-03`)
     ///
     /// Used when a field is explicitly converted to a date using the `AS DATE` syntax.

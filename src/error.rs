@@ -192,6 +192,9 @@ pub enum AnalysisError {
     /// not registered in the `AnalysisOptions` custom type set.
     #[error("{0}:{1}: unsupported custom type '{2}'")]
     UnsupportedCustomType(u32, u32, String),
+
+    #[error("{0}:{1}: function '{2}' requires {3} parameters but got {4}")]
+    FunWrongArgumentCount(u32, u32, String, usize, usize),
 }
 
 impl From<LexerError> for Error {

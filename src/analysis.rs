@@ -733,44 +733,38 @@ impl<'a> Analysis<'a> {
 
             this @ Value::Access(_) => Ok(self.analyze_access(attrs, this, expect)?),
 
-            this @ Value::App(app) => {
-                // TODO - we should still check if the function exists
-                if matches!(expect, Type::Unspecified) {
-                    return Ok(self.project_type(this));
-                }
-
-                match expect {
-                    Type::App { args, mut result, aggregate } if app.args.len() == args.len() => {
-                        let mut arg_types = Vec::with_capacity(args.capacity());
-                        for (arg, tpe) in app.args.iter().zip(args.into_iter()) {
-                            arg_types.push(self.analyze_expr(arg, tpe)?);
-                        }
-
-                        if let Some(tpe) = self.options.default_scope.entries.get(app.func.as_str())
-                        {
-                            let tmp = mem::take(result.as_mut());
-                            *result = tmp.check(attrs, tpe.clone())?;
-
-                            Ok(Type::App {
-                                args: arg_types,
-                                result,
-                                aggregate
-                            })
-                        } else {
-                            Err(AnalysisError::FuncUndeclared(
-                                attrs.pos.line,
-                                attrs.pos.col,
-                                app.func.clone(),
-                            ))
-                        }
+            Value::App(app) => {
+                if let Some(tpe) = self.options.default_scope.entries.get(app.func.as_str())
+                    && let Type::App { args, result, aggregate } = tpe
+                {
+                    if args.len() != app.args.len() {
+                        return Err(AnalysisError::FunWrongArgumentCount(
+                            attrs.pos.line,
+                            attrs.pos.col,
+                            app.func.clone(),
+                            args.len(),
+                            app.args.len(),
+                        ));
                     }
 
-                    expect => Err(AnalysisError::TypeMismatch(
+                    for (arg, tpe) in app.args.iter().zip(args.iter().cloned()) {
+                        self.analyze_expr(arg, tpe)?;
+                    }
+
+                    // TODO - check if we are dealing with an aggregate function while not in a
+                    // projection expression.
+
+                    if matches!(expect, Type::Unspecified) {
+                        Ok(result.as_ref().clone())
+                    } else {
+                        expect.check(attrs, result.as_ref().clone())
+                    }
+                } else {
+                    Err(AnalysisError::FuncUndeclared(
                         attrs.pos.line,
                         attrs.pos.col,
-                        expect,
-                        self.project_type(value),
-                    )),
+                        app.func.clone(),
+                    ))
                 }
             }
 
