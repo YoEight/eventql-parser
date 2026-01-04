@@ -113,6 +113,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -120,6 +121,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -127,6 +129,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -134,6 +137,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -141,6 +145,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -148,6 +153,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -155,6 +161,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number, Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -162,6 +169,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -169,6 +177,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -176,6 +185,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -183,6 +193,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::String),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -190,6 +201,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::String),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -197,6 +209,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::String),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -204,6 +217,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::String),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -211,6 +225,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::String),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -218,6 +233,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -225,6 +241,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -232,6 +249,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String, Type::Number, Type::Number],
                             result: Box::new(Type::String),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -239,6 +257,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String, Type::String, Type::String],
                             result: Box::new(Type::String),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -246,6 +265,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String, Type::String],
                             result: Box::new(Type::Bool),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -253,6 +273,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String, Type::String],
                             result: Box::new(Type::Bool),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -260,6 +281,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![],
                             result: Box::new(Type::String),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -267,6 +289,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -274,6 +297,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -281,6 +305,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -288,6 +313,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -295,6 +321,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -302,6 +329,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -309,6 +337,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::String],
                             result: Box::new(Type::Number),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -316,6 +345,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Bool, Type::Unspecified, Type::Unspecified],
                             result: Box::new(Type::Unspecified),
+                            aggregate: false,
                         },
                     ),
                     (
@@ -323,6 +353,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![],
                             result: Box::new(Type::Number),
+                            aggregate: true,
                         },
                     ),
                     (
@@ -330,6 +361,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: true,
                         },
                     ),
                     (
@@ -337,6 +369,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: true,
                         },
                     ),
                     (
@@ -344,6 +377,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: true,
                         },
                     ),
                     (
@@ -351,6 +385,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: true,
                         },
                     ),
                     (
@@ -358,6 +393,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: true,
                         },
                     ),
                     (
@@ -365,6 +401,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: true,
                         },
                     ),
                     (
@@ -372,6 +409,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: true,
                         },
                     ),
                     (
@@ -379,6 +417,7 @@ impl Default for AnalysisOptions {
                         Type::App {
                             args: vec![Type::Number],
                             result: Box::new(Type::Number),
+                            aggregate: true,
                         },
                     ),
                 ]),
@@ -695,12 +734,13 @@ impl<'a> Analysis<'a> {
             this @ Value::Access(_) => Ok(self.analyze_access(attrs, this, expect)?),
 
             this @ Value::App(app) => {
+                // TODO - we should still check if the function exists
                 if matches!(expect, Type::Unspecified) {
                     return Ok(self.project_type(this));
                 }
 
                 match expect {
-                    Type::App { args, mut result } if app.args.len() == args.len() => {
+                    Type::App { args, mut result, aggregate } if app.args.len() == args.len() => {
                         let mut arg_types = Vec::with_capacity(args.capacity());
                         for (arg, tpe) in app.args.iter().zip(args.into_iter()) {
                             arg_types.push(self.analyze_expr(arg, tpe)?);
@@ -714,6 +754,7 @@ impl<'a> Analysis<'a> {
                             Ok(Type::App {
                                 args: arg_types,
                                 result,
+                                aggregate
                             })
                         } else {
                             Err(AnalysisError::FuncUndeclared(

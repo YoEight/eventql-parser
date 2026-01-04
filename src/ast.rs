@@ -72,7 +72,7 @@ pub enum Type {
     /// Subject pattern type
     Subject,
     /// Function type
-    App { args: Vec<Type>, result: Box<Type> },
+    App { args: Vec<Type>, result: Box<Type>, aggregate: bool },
     /// Date type (e.g., `2026-01-03`)
     ///
     /// Used when a field is explicitly converted to a date using the `AS DATE` syntax.
@@ -169,18 +169,21 @@ impl Type {
                 Self::App {
                     args: mut a_args,
                     result: mut a_res,
+                    aggregate: a_agg,
                 },
                 Self::App {
                     args: b_args,
                     result: b_res,
+                    aggregate: b_agg,
                 },
-            ) if a_args.len() == b_args.len() => {
+            ) if a_args.len() == b_args.len() && a_agg == b_agg => {
                 if a_args.is_empty() {
                     let tmp = mem::take(a_res.as_mut());
                     *a_res = tmp.check(attrs, *b_res)?;
                     return Ok(Self::App {
                         args: a_args,
                         result: a_res,
+                        aggregate: a_agg,
                     });
                 }
 
@@ -195,6 +198,7 @@ impl Type {
                 Ok(Self::App {
                     args: a_args,
                     result: a_res,
+                    aggregate: a_agg,
                 })
             }
 
