@@ -1,84 +1,85 @@
 ---
 source: src/tests/parser.rs
-expression: parse(tokens.as_slice()).unwrap()
+expression: parse(tokens.as_slice())
 ---
-attrs:
-  pos:
-    line: 1
-    col: 1
-sources:
-  - binding:
-      name: e
+Ok:
+  attrs:
+    pos:
+      line: 1
+      col: 1
+  sources:
+    - binding:
+        name: e
+        pos:
+          line: 1
+          col: 6
+      kind:
+        Name: events
+  predicate:
+    attrs:
       pos:
-        line: 1
-        col: 6
-    kind:
-      Name: events
-predicate:
-  attrs:
-    pos:
-      line: 2
-      col: 7
-  value:
-    Binary:
-      lhs:
-        attrs:
-          pos:
-            line: 2
-            col: 7
-        value:
-          Array:
-            - attrs:
-                pos:
-                  line: 2
-                  col: 8
-              value:
-                Number: 1
-            - attrs:
-                pos:
-                  line: 2
-                  col: 10
-              value:
-                Number: 2
-            - attrs:
-                pos:
-                  line: 2
-                  col: 12
-              value:
-                Number: 3
-      operator: Contains
-      rhs:
-        attrs:
-          pos:
-            line: 2
-            col: 24
-        value:
-          Access:
-            target:
-              attrs:
-                pos:
-                  line: 2
-                  col: 24
-              value:
-                Access:
-                  target:
-                    attrs:
-                      pos:
-                        line: 2
-                        col: 24
-                    value:
-                      Id: e
-                  field: data
-            field: price
-group_by: ~
-order_by: ~
-limit: ~
-projection:
-  attrs:
-    pos:
-      line: 3
-      col: 14
-  value:
-    Id: e
-distinct: false
-meta: ~
+        line: 2
+        col: 7
+    value:
+      Binary:
+        lhs:
+          attrs:
+            pos:
+              line: 2
+              col: 7
+          value:
+            Array:
+              - attrs:
+                  pos:
+                    line: 2
+                    col: 8
+                value:
+                  Number: 1
+              - attrs:
+                  pos:
+                    line: 2
+                    col: 10
+                value:
+                  Number: 2
+              - attrs:
+                  pos:
+                    line: 2
+                    col: 12
+                value:
+                  Number: 3
+        operator: Contains
+        rhs:
+          attrs:
+            pos:
+              line: 2
+              col: 24
+          value:
+            Access:
+              target:
+                attrs:
+                  pos:
+                    line: 2
+                    col: 24
+                value:
+                  Access:
+                    target:
+                      attrs:
+                        pos:
+                          line: 2
+                          col: 24
+                      value:
+                        Id: e
+                    field: data
+              field: price
+  group_by: ~
+  order_by: ~
+  limit: ~
+  projection:
+    attrs:
+      pos:
+        line: 3
+        col: 14
+    value:
+      Id: e
+  distinct: false
+  meta: ~

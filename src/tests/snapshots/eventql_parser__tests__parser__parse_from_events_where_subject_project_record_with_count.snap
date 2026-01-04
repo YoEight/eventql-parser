@@ -1,68 +1,69 @@
 ---
 source: src/tests/parser.rs
-expression: parse(tokens.as_slice()).unwrap()
+expression: parse(tokens.as_slice())
 ---
-attrs:
-  pos:
-    line: 1
-    col: 1
-sources:
-  - binding:
-      name: e
+Ok:
+  attrs:
+    pos:
+      line: 1
+      col: 1
+  sources:
+    - binding:
+        name: e
+        pos:
+          line: 1
+          col: 6
+      kind:
+        Name: events
+  predicate:
+    attrs:
       pos:
-        line: 1
-        col: 6
-    kind:
-      Name: events
-predicate:
-  attrs:
-    pos:
-      line: 2
-      col: 7
-  value:
-    Binary:
-      lhs:
-        attrs:
-          pos:
-            line: 2
-            col: 7
-        value:
-          Access:
-            target:
-              attrs:
-                pos:
-                  line: 2
-                  col: 7
-              value:
-                Id: e
-            field: subject
-      operator: Eq
-      rhs:
-        attrs:
-          pos:
-            line: 2
-            col: 20
-        value:
-          String: /books/42
-group_by: ~
-order_by: ~
-limit: ~
-projection:
-  attrs:
-    pos:
-      line: 3
-      col: 14
-  value:
-    Record:
-      - name: total
-        value:
+        line: 2
+        col: 7
+    value:
+      Binary:
+        lhs:
           attrs:
             pos:
-              line: 3
-              col: 23
+              line: 2
+              col: 7
           value:
-            App:
-              func: COUNT
-              args: []
-distinct: false
-meta: ~
+            Access:
+              target:
+                attrs:
+                  pos:
+                    line: 2
+                    col: 7
+                value:
+                  Id: e
+              field: subject
+        operator: Eq
+        rhs:
+          attrs:
+            pos:
+              line: 2
+              col: 20
+          value:
+            String: /books/42
+  group_by: ~
+  order_by: ~
+  limit: ~
+  projection:
+    attrs:
+      pos:
+        line: 3
+        col: 14
+    value:
+      Record:
+        - name: total
+          value:
+            attrs:
+              pos:
+                line: 3
+                col: 23
+            value:
+              App:
+                func: COUNT
+                args: []
+  distinct: false
+  meta: ~

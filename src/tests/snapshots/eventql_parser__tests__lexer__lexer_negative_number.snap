@@ -1,15 +1,16 @@
 ---
 source: src/tests/lexer.rs
-expression: "tokenize(\"-123.456\").unwrap()"
+expression: "tokenize(\"-123.456\")"
 ---
-- sym:
-    Operator: Sub
-  line: 1
-  col: 1
-- sym:
-    Number: 123.456
-  line: 1
-  col: 2
-- sym: Eof
-  line: 1
-  col: 9
+Ok:
+  - sym:
+      Operator: Sub
+    line: 1
+    col: 1
+  - sym:
+      Number: 123.456
+    line: 1
+    col: 2
+  - sym: Eof
+    line: 1
+    col: 9
