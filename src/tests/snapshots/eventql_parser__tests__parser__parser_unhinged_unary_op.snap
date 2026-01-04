@@ -1,67 +1,68 @@
 ---
 source: src/tests/parser.rs
-expression: parse(tokens.as_slice()).unwrap()
+expression: parse(tokens.as_slice())
 ---
-attrs:
-  pos:
-    line: 1
-    col: 1
-sources:
-  - binding:
-      name: e
+Ok:
+  attrs:
+    pos:
+      line: 1
+      col: 1
+  sources:
+    - binding:
+        name: e
+        pos:
+          line: 1
+          col: 6
+      kind:
+        Name: events
+  predicate:
+    attrs:
       pos:
-        line: 1
-        col: 6
-    kind:
-      Name: events
-predicate:
-  attrs:
-    pos:
-      line: 2
-      col: 7
-  value:
-    Unary:
-      operator: Not
-      expr:
-        attrs:
-          pos:
-            line: 2
-            col: 11
-        value:
-          Unary:
-            operator: Not
-            expr:
-              attrs:
-                pos:
-                  line: 2
-                  col: 15
-              value:
-                Unary:
-                  operator: Not
-                  expr:
-                    attrs:
-                      pos:
-                        line: 2
-                        col: 19
-                    value:
-                      Access:
-                        target:
-                          attrs:
-                            pos:
-                              line: 2
-                              col: 19
-                          value:
-                            Id: e
-                        field: enabled
-group_by: ~
-order_by: ~
-limit: ~
-projection:
-  attrs:
-    pos:
-      line: 3
-      col: 14
-  value:
-    Id: e
-distinct: false
-meta: ~
+        line: 2
+        col: 7
+    value:
+      Unary:
+        operator: Not
+        expr:
+          attrs:
+            pos:
+              line: 2
+              col: 11
+          value:
+            Unary:
+              operator: Not
+              expr:
+                attrs:
+                  pos:
+                    line: 2
+                    col: 15
+                value:
+                  Unary:
+                    operator: Not
+                    expr:
+                      attrs:
+                        pos:
+                          line: 2
+                          col: 19
+                      value:
+                        Access:
+                          target:
+                            attrs:
+                              pos:
+                                line: 2
+                                col: 19
+                            value:
+                              Id: e
+                          field: enabled
+  group_by: ~
+  order_by: ~
+  limit: ~
+  projection:
+    attrs:
+      pos:
+        line: 3
+        col: 14
+    value:
+      Id: e
+  distinct: false
+  meta: ~

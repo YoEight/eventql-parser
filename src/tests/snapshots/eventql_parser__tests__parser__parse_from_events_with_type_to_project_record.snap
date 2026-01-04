@@ -1,98 +1,99 @@
 ---
 source: src/tests/parser.rs
-expression: parse(tokens.as_slice()).unwrap()
+expression: parse(tokens.as_slice())
 ---
-attrs:
-  pos:
-    line: 1
-    col: 1
-sources:
-  - binding:
-      name: e
+Ok:
+  attrs:
+    pos:
+      line: 1
+      col: 1
+  sources:
+    - binding:
+        name: e
+        pos:
+          line: 1
+          col: 6
+      kind:
+        Name: events
+  predicate:
+    attrs:
       pos:
-        line: 1
-        col: 6
-    kind:
-      Name: events
-predicate:
-  attrs:
-    pos:
-      line: 2
-      col: 7
-  value:
-    Binary:
-      lhs:
-        attrs:
-          pos:
-            line: 2
-            col: 7
-        value:
-          Access:
-            target:
-              attrs:
-                pos:
-                  line: 2
-                  col: 7
-              value:
-                Id: e
-            field: type
-      operator: Eq
-      rhs:
-        attrs:
-          pos:
-            line: 2
-            col: 17
-        value:
-          String: io.eventsourcingdb.library.book-acquired
-group_by: ~
-order_by: ~
-limit: ~
-projection:
-  attrs:
-    pos:
-      line: 3
-      col: 14
-  value:
-    Record:
-      - name: id
-        value:
+        line: 2
+        col: 7
+    value:
+      Binary:
+        lhs:
           attrs:
             pos:
-              line: 3
-              col: 20
+              line: 2
+              col: 7
           value:
             Access:
               target:
                 attrs:
                   pos:
-                    line: 3
-                    col: 20
+                    line: 2
+                    col: 7
                 value:
                   Id: e
-              field: id
-      - name: book
-        value:
+              field: type
+        operator: Eq
+        rhs:
           attrs:
             pos:
-              line: 3
-              col: 32
+              line: 2
+              col: 17
           value:
-            Access:
-              target:
-                attrs:
-                  pos:
-                    line: 3
-                    col: 32
-                value:
-                  Access:
-                    target:
-                      attrs:
-                        pos:
-                          line: 3
-                          col: 32
-                      value:
-                        Id: e
-                    field: data
-              field: title
-distinct: false
-meta: ~
+            String: io.eventsourcingdb.library.book-acquired
+  group_by: ~
+  order_by: ~
+  limit: ~
+  projection:
+    attrs:
+      pos:
+        line: 3
+        col: 14
+    value:
+      Record:
+        - name: id
+          value:
+            attrs:
+              pos:
+                line: 3
+                col: 20
+            value:
+              Access:
+                target:
+                  attrs:
+                    pos:
+                      line: 3
+                      col: 20
+                  value:
+                    Id: e
+                field: id
+        - name: book
+          value:
+            attrs:
+              pos:
+                line: 3
+                col: 32
+            value:
+              Access:
+                target:
+                  attrs:
+                    pos:
+                      line: 3
+                      col: 32
+                  value:
+                    Access:
+                      target:
+                        attrs:
+                          pos:
+                            line: 3
+                            col: 32
+                        value:
+                          Id: e
+                      field: data
+                field: title
+  distinct: false
+  meta: ~

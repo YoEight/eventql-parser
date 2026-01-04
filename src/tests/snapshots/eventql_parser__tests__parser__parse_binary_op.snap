@@ -1,158 +1,159 @@
 ---
 source: src/tests/parser.rs
-expression: parse(tokens.as_slice()).unwrap()
+expression: parse(tokens.as_slice())
 ---
-attrs:
-  pos:
-    line: 1
-    col: 1
-sources:
-  - binding:
-      name: e
+Ok:
+  attrs:
+    pos:
+      line: 1
+      col: 1
+  sources:
+    - binding:
+        name: e
+        pos:
+          line: 1
+          col: 6
+      kind:
+        Name: events
+  predicate:
+    attrs:
       pos:
-        line: 1
-        col: 6
-    kind:
-      Name: events
-predicate:
-  attrs:
-    pos:
-      line: 2
-      col: 7
-  value:
-    Binary:
-      lhs:
-        attrs:
-          pos:
-            line: 2
-            col: 7
-        value:
-          Binary:
-            lhs:
-              attrs:
-                pos:
-                  line: 2
-                  col: 7
-              value:
-                Binary:
-                  lhs:
-                    attrs:
-                      pos:
-                        line: 2
-                        col: 7
-                    value:
-                      Access:
-                        target:
-                          attrs:
-                            pos:
-                              line: 2
-                              col: 7
-                          value:
-                            Access:
-                              target:
-                                attrs:
-                                  pos:
-                                    line: 2
-                                    col: 7
-                                value:
-                                  Id: e
-                              field: data
-                        field: foo
-                  operator: Eq
-                  rhs:
-                    attrs:
-                      pos:
-                        line: 2
-                        col: 21
-                    value:
-                      String: foobar
-            operator: And
-            rhs:
-              attrs:
-                pos:
-                  line: 2
-                  col: 34
-              value:
-                Binary:
-                  lhs:
-                    attrs:
-                      pos:
-                        line: 2
-                        col: 34
-                    value:
-                      Access:
-                        target:
-                          attrs:
-                            pos:
-                              line: 2
-                              col: 34
-                          value:
-                            Access:
-                              target:
-                                attrs:
-                                  pos:
-                                    line: 2
-                                    col: 34
-                                value:
-                                  Id: e
-                              field: data
-                        field: foo
-                  operator: Eq
-                  rhs:
-                    attrs:
-                      pos:
-                        line: 2
-                        col: 48
-                    value:
-                      Number: 42
-      operator: Or
-      rhs:
-        attrs:
-          pos:
-            line: 2
-            col: 54
-        value:
-          Binary:
-            lhs:
-              attrs:
-                pos:
-                  line: 2
-                  col: 54
-              value:
-                Access:
-                  target:
-                    attrs:
-                      pos:
-                        line: 2
-                        col: 54
-                    value:
-                      Access:
-                        target:
-                          attrs:
-                            pos:
-                              line: 2
-                              col: 54
-                          value:
-                            Id: e
-                        field: data
-                  field: foo
-            operator: Eq
-            rhs:
-              attrs:
-                pos:
-                  line: 2
-                  col: 68
-              value:
-                Number: 123
-group_by: ~
-order_by: ~
-limit: ~
-projection:
-  attrs:
-    pos:
-      line: 3
-      col: 14
-  value:
-    Id: e
-distinct: false
-meta: ~
+        line: 2
+        col: 7
+    value:
+      Binary:
+        lhs:
+          attrs:
+            pos:
+              line: 2
+              col: 7
+          value:
+            Binary:
+              lhs:
+                attrs:
+                  pos:
+                    line: 2
+                    col: 7
+                value:
+                  Binary:
+                    lhs:
+                      attrs:
+                        pos:
+                          line: 2
+                          col: 7
+                      value:
+                        Access:
+                          target:
+                            attrs:
+                              pos:
+                                line: 2
+                                col: 7
+                            value:
+                              Access:
+                                target:
+                                  attrs:
+                                    pos:
+                                      line: 2
+                                      col: 7
+                                  value:
+                                    Id: e
+                                field: data
+                          field: foo
+                    operator: Eq
+                    rhs:
+                      attrs:
+                        pos:
+                          line: 2
+                          col: 21
+                      value:
+                        String: foobar
+              operator: And
+              rhs:
+                attrs:
+                  pos:
+                    line: 2
+                    col: 34
+                value:
+                  Binary:
+                    lhs:
+                      attrs:
+                        pos:
+                          line: 2
+                          col: 34
+                      value:
+                        Access:
+                          target:
+                            attrs:
+                              pos:
+                                line: 2
+                                col: 34
+                            value:
+                              Access:
+                                target:
+                                  attrs:
+                                    pos:
+                                      line: 2
+                                      col: 34
+                                  value:
+                                    Id: e
+                                field: data
+                          field: foo
+                    operator: Eq
+                    rhs:
+                      attrs:
+                        pos:
+                          line: 2
+                          col: 48
+                      value:
+                        Number: 42
+        operator: Or
+        rhs:
+          attrs:
+            pos:
+              line: 2
+              col: 54
+          value:
+            Binary:
+              lhs:
+                attrs:
+                  pos:
+                    line: 2
+                    col: 54
+                value:
+                  Access:
+                    target:
+                      attrs:
+                        pos:
+                          line: 2
+                          col: 54
+                      value:
+                        Access:
+                          target:
+                            attrs:
+                              pos:
+                                line: 2
+                                col: 54
+                            value:
+                              Id: e
+                          field: data
+                    field: foo
+              operator: Eq
+              rhs:
+                attrs:
+                  pos:
+                    line: 2
+                    col: 68
+                value:
+                  Number: 123
+  group_by: ~
+  order_by: ~
+  limit: ~
+  projection:
+    attrs:
+      pos:
+        line: 3
+        col: 14
+    value:
+      Id: e
+  distinct: false
+  meta: ~
