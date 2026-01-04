@@ -96,6 +96,8 @@ pub enum Operator {
     Not,
     /// Containment (`array CONTAINS value`)
     Contains,
+    /// Type conversion (`e.foo as STRING`)
+    As,
 }
 
 impl Display for Operator {
@@ -116,6 +118,7 @@ impl Display for Operator {
             Operator::Xor => write!(f, "XOR"),
             Operator::Not => write!(f, "NOT"),
             Operator::Contains => write!(f, "CONTAINS"),
+            Operator::As => write!(f, "AS"),
         }
     }
 }

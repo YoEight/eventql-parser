@@ -353,6 +353,13 @@ impl<'a> Parser<'a> {
             self.shift();
             let rhs = self.parse_binary(rhs_bind)?;
 
+            if matches!(operator, Operator::As) && !matches!(rhs.value, Value::Id(_)) {
+                return Err(ParserError::ExpectedType(
+                    rhs.attrs.pos.line,
+                    rhs.attrs.pos.col,
+                ));
+            }
+
             lhs = Expr {
                 attrs: lhs.attrs,
                 value: Value::Binary(Binary {
@@ -477,6 +484,7 @@ fn binding_pow(op: Operator) -> (u64, u64) {
         Operator::Add | Operator::Sub => (20, 21),
         Operator::Mul | Operator::Div => (30, 31),
         Operator::Contains => (40, 39),
+        Operator::As => (50, 49),
         Operator::Eq
         | Operator::Neq
         | Operator::Gt

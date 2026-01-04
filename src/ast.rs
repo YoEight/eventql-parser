@@ -73,6 +73,33 @@ pub enum Type {
     Subject,
     /// Function type
     App { args: Vec<Type>, result: Box<Type> },
+    /// Date type (e.g., `2026-01-03`)
+    ///
+    /// Used when a field is explicitly converted to a date using the `AS DATE` syntax.
+    Date,
+    /// Time type (e.g., `13:45:39`)
+    ///
+    /// Used when a field is explicitly converted to a time using the `AS TIME` syntax.
+    Time,
+    /// DateTime type (e.g., `2026-01-01T13:45:39Z`)
+    ///
+    /// Used when a field is explicitly converted to a datetime using the `AS DATETIME` syntax.
+    DateTime,
+    /// Custom type not defined in the EventQL reference
+    ///
+    /// Used when a field is converted to a custom type registered in [`AnalysisOptions::custom_types`].
+    /// The string contains the custom type name as it appears in the query.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::{parse_query, AnalysisOptions};
+    ///
+    /// let query = parse_query("FROM e IN events PROJECT INTO { ts: e.data.timestamp as CustomTimestamp }").unwrap();
+    /// let options = AnalysisOptions::default().add_custom_type("CustomTimestamp");
+    /// let typed_query = query.run_static_analysis(&options).unwrap();
+    /// ```
+    Custom(String),
 }
 
 impl Type {
@@ -103,6 +130,12 @@ impl Type {
             (Self::Number, Self::Number) => Ok(Self::Number),
             (Self::String, Self::String) => Ok(Self::String),
             (Self::Bool, Self::Bool) => Ok(Self::Bool),
+            (Self::Date, Self::Date) => Ok(Self::Date),
+            (Self::Time, Self::Time) => Ok(Self::Time),
+            (Self::DateTime, Self::DateTime) => Ok(Self::DateTime),
+            (Self::Custom(a), Self::Custom(b)) if a.eq_ignore_ascii_case(b.as_str()) => {
+                Ok(Self::Custom(a))
+            }
             (Self::Array(mut a), Self::Array(b)) => {
                 *a = a.as_ref().clone().check(attrs, *b)?;
                 Ok(Self::Array(a))

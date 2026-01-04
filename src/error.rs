@@ -83,6 +83,15 @@ pub enum ParserError {
     #[error("{0}:{1}: unexpected token {2}")]
     UnexpectedToken(u32, u32, String),
 
+    /// Expected a type name but found something else.
+    ///
+    /// Fields: `(line, column, found_token)`
+    ///
+    /// This occurs when defining a type conversion operation but the left side is
+    /// not a type.
+    #[error("{0}:{1}: expected a type")]
+    ExpectedType(u32, u32),
+
     /// The input ended unexpectedly while parsing.
     ///
     /// This occurs when the parser expects more tokens but encounters
@@ -178,4 +187,9 @@ pub enum AnalysisError {
     /// SELECT projection clause.
     #[error("{0}:{1}: expected a record")]
     ExpectRecordLiteral(u32, u32),
+
+    /// When a custom type (meaning a type not supported by EventQL by default) is used but
+    /// not registered in the `AnalysisOptions` custom type set.
+    #[error("{0}:{1}: unsupported custom type '{2}'")]
+    UnsupportedCustomType(u32, u32, String),
 }

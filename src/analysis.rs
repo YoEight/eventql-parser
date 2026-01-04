@@ -1,9 +1,11 @@
 use std::{
-    collections::{BTreeMap, HashMap, btree_map::Entry},
+    borrow::Cow,
+    collections::{BTreeMap, HashMap, HashSet, btree_map::Entry},
     mem,
 };
 
 use serde::Serialize;
+use unicase::Ascii;
 
 use crate::{
     Attrs, Expr, Query, Raw, Source, SourceKind, Type, Value, error::AnalysisError, token::Operator,
@@ -50,6 +52,55 @@ pub struct AnalysisOptions {
     pub default_scope: Scope,
     /// Type information for event records being queried.
     pub event_type_info: Type,
+    /// Custom types that are not defined in the EventQL reference.
+    ///
+    /// This set allows users to register custom type names that can be used
+    /// in type conversion expressions (e.g., `field AS CustomType`). Custom
+    /// type names are case-insensitive.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::AnalysisOptions;
+    ///
+    /// let options = AnalysisOptions::default()
+    ///     .add_custom_type("Foobar");
+    /// ```
+    pub custom_types: HashSet<Ascii<String>>,
+}
+
+impl AnalysisOptions {
+    /// Adds a custom type name to the analysis options.
+    ///
+    /// Custom types allow you to use type conversion syntax with types that are
+    /// not part of the standard EventQL type system. The type name is stored
+    /// case-insensitively.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The custom type name to register
+    ///
+    /// # Returns
+    ///
+    /// Returns `self` to allow for method chaining.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::AnalysisOptions;
+    ///
+    /// let options = AnalysisOptions::default()
+    ///     .add_custom_type("Timestamp")
+    ///     .add_custom_type("UUID");
+    /// ```
+    pub fn add_custom_type<'a>(mut self, value: impl Into<Cow<'a, str>>) -> Self {
+        match value.into() {
+            Cow::Borrowed(t) => self.custom_types.insert(Ascii::new(t.to_owned())),
+            Cow::Owned(t) => self.custom_types.insert(Ascii::new(t)),
+        };
+
+        self
+    }
 }
 
 impl Default for AnalysisOptions {
@@ -347,6 +398,7 @@ impl Default for AnalysisOptions {
                 ("tracestate".to_owned(), Type::String),
                 ("signature".to_owned(), Type::String),
             ])),
+            custom_types: HashSet::default(),
         }
     }
 }
@@ -743,6 +795,25 @@ impl<'a> Analysis<'a> {
                     expect.check(attrs, Type::Bool)
                 }
 
+                Operator::As => {
+                    if let Value::Id(name) = &binary.rhs.value {
+                        if let Some(tpe) = name_to_type(self.options, name) {
+                            // NOTE - we could check if it's safe to convert the left branch to that type
+                            return Ok(tpe);
+                        } else {
+                            return Err(AnalysisError::UnsupportedCustomType(
+                                attrs.pos.line,
+                                attrs.pos.col,
+                                name.clone(),
+                            ));
+                        }
+                    }
+
+                    unreachable!(
+                        "we already made sure during parsing that we can only have an ID symbol at this point"
+                    )
+                }
+
                 Operator::Not => unreachable!(),
             },
 
@@ -997,6 +1068,15 @@ impl<'a> Analysis<'a> {
                 .unwrap_or_default(),
             Value::Binary(binary) => match binary.operator {
                 Operator::Add | Operator::Sub | Operator::Mul | Operator::Div => Type::Number,
+                Operator::As => {
+                    if let Value::Id(n) = &binary.rhs.as_ref().value
+                        && let Some(tpe) = name_to_type(self.options, n.as_str())
+                    {
+                        tpe
+                    } else {
+                        Type::Unspecified
+                    }
+                }
                 Operator::Eq
                 | Operator::Neq
                 | Operator::Lt
@@ -1023,9 +1103,31 @@ impl<'a> Analysis<'a> {
                 | Operator::Or
                 | Operator::Xor
                 | Operator::Not
-                | Operator::Contains => unreachable!(),
+                | Operator::Contains
+                | Operator::As => unreachable!(),
             },
             Value::Group(expr) => self.project_type(&expr.value),
         }
+    }
+}
+
+fn name_to_type(opts: &AnalysisOptions, name: &str) -> Option<Type> {
+    if name.eq_ignore_ascii_case("string") {
+        Some(Type::String)
+    } else if name.eq_ignore_ascii_case("int") || name.eq_ignore_ascii_case("float64") {
+        Some(Type::Number)
+    } else if name.eq_ignore_ascii_case("boolean") {
+        Some(Type::Bool)
+    } else if name.eq_ignore_ascii_case("date") {
+        Some(Type::Date)
+    } else if name.eq_ignore_ascii_case("time") {
+        Some(Type::Time)
+    } else if name.eq_ignore_ascii_case("datetime") {
+        Some(Type::DateTime)
+    } else if opts.custom_types.contains(&Ascii::new(name.to_owned())) {
+        // ^ Sad we have to allocate here for no reason
+        Some(Type::Custom(name.to_owned()))
+    } else {
+        None
     }
 }

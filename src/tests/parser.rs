@@ -72,3 +72,15 @@ fn test_parser_valid_contains() {
     let tokens = tokenize(include_str!("./resources/valid_contains.eql")).unwrap();
     insta::assert_yaml_snapshot!(parse(tokens.as_slice()).unwrap());
 }
+
+#[test]
+fn test_parser_valid_type_conversion() {
+    let tokens = tokenize(include_str!("./resources/valid_type_conversion.eql")).unwrap();
+    insta::assert_yaml_snapshot!(parse(tokens.as_slice()).unwrap());
+}
+
+#[test]
+fn test_parser_invalid_type_conversion_expr() {
+    let tokens = tokenize(include_str!("./resources/invalid_type_conversion_expr.eql")).unwrap();
+    insta::assert_yaml_snapshot!(parse(tokens.as_slice()));
+}
