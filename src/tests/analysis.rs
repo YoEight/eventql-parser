@@ -73,3 +73,12 @@ fn test_analyze_valid_type_conversion_weird_case() {
     .unwrap();
     insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
 }
+
+#[test]
+fn test_analyze_prevent_using_aggregate_with_source_based_props() {
+    let query = parse_query(include_str!(
+        "./resources/aggregate_with_sourced_bases_props.eql"
+    ))
+    .unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}

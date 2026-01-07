@@ -486,6 +486,9 @@ impl Scope {
     }
 }
 
+// TODO - find a better name
+enum Frame {}
+
 #[derive(Default)]
 struct Context {
     analyzing_projection: bool,
