@@ -1,0 +1,3 @@
+FROM e IN events
+WHERE 3 > COUNT()
+PROJECT INTO e
