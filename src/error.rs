@@ -184,7 +184,7 @@ pub enum AnalysisError {
     /// Fields: `(line, column)`
     ///
     /// This occurs when a record literal is required, such as in the
-    /// SELECT projection clause.
+    /// PROJECT INTO clause.
     #[error("{0}:{1}: expected a record")]
     ExpectRecordLiteral(u32, u32),
 
@@ -193,15 +193,89 @@ pub enum AnalysisError {
     #[error("{0}:{1}: unsupported custom type '{2}'")]
     UnsupportedCustomType(u32, u32, String),
 
+    /// A function was called with the wrong number of arguments.
+    ///
+    /// Fields: `(line, column, function_name, expected_count, actual_count)`
+    ///
+    /// This occurs when calling a function with a different number of arguments
+    /// than what the function signature requires.
     #[error("{0}:{1}: function '{2}' requires {3} parameters but got {4}")]
     FunWrongArgumentCount(u32, u32, String, usize, usize),
 
+    /// An aggregate function was used outside of a PROJECT INTO clause.
+    ///
+    /// Fields: `(line, column, function_name)`
+    ///
+    /// This occurs when an aggregate function (e.g., SUM, COUNT, AVG) is used
+    /// in a context where aggregation is not allowed, such as in WHERE, GROUP BY,
+    /// or ORDER BY clauses. Aggregate functions can only be used in the PROJECT INTO
+    /// clause to compute aggregated values over groups of events.
+    ///
+    /// # Example
+    ///
+    /// Invalid usage:
+    /// ```eql
+    /// FROM e IN events
+    /// WHERE COUNT() > 5  // Error: aggregate function in WHERE clause
+    /// PROJECT INTO e
+    /// ```
+    ///
+    /// Valid usage:
+    /// ```eql
+    /// FROM e IN events
+    /// PROJECT INTO { total: COUNT() }
+    /// ```
     #[error("{0}:{1}: aggregate function '{2}' can only be used in a PROJECT INTO clause")]
     WrongAggFunUsage(u32, u32, String),
 
+    /// An aggregate function was used together with source-bound fields.
+    ///
+    /// Fields: `(line, column)`
+    ///
+    /// This occurs when attempting to mix aggregate functions with fields that are
+    /// bound to source events within the same projection field. Aggregate functions
+    /// operate on groups of events, while source-bound fields refer to individual
+    /// event properties. These cannot be mixed in a single field expression.
+    ///
+    /// # Example
+    ///
+    /// Invalid usage:
+    /// ```eql
+    /// FROM e IN events
+    /// // Error: mixing aggregate (SUM) with source field (e.id)
+    /// PROJECT INTO { count: SUM(e.data.price), id: e.id }
+    /// ```
+    ///
+    /// Valid usage:
+    /// ```eql
+    /// FROM e IN events
+    /// // OK: only using aggregate functions and constants
+    /// PROJECT INTO { sum: SUM(e.data.price), label: "total" }
+    /// ```
     #[error("{0}:{1}: aggregate functions cannot be used with source-bound fields")]
     UnallowedAggFuncUsageWithSrcField(u32, u32),
 
+    /// An empty record literal was used in a context where it is not allowed.
+    ///
+    /// Fields: `(line, column)`
+    ///
+    /// This occurs when using an empty record `{}` as a projection, which would
+    /// result in a query that produces no output fields. Projections must contain
+    /// at least one field.
+    ///
+    /// # Example
+    ///
+    /// Invalid usage:
+    /// ```eql
+    /// FROM e IN events
+    /// PROJECT INTO {}  // Error: empty record
+    /// ```
+    ///
+    /// Valid usage:
+    /// ```eql
+    /// FROM e IN events
+    /// PROJECT INTO { id: e.id }
+    /// ```
     #[error("{0}:{1}: unexpected empty record")]
     EmptyRecord(u32, u32),
 }

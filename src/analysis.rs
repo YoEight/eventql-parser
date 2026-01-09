@@ -451,6 +451,9 @@ impl Default for AnalysisOptions {
 /// - Types match expected types in expressions and operations
 /// - Field accesses are valid for their record types
 /// - Function calls have the correct argument types
+/// - Aggregate functions are only used in PROJECT INTO clauses
+/// - Aggregate functions are not mixed with source-bound fields in projections
+/// - Record literals are non-empty in projection contexts
 ///
 /// # Arguments
 ///
