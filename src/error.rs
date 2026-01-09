@@ -201,6 +201,9 @@ pub enum AnalysisError {
 
     #[error("{0}:{1}: aggregate functions cannot be used with source-bound fields")]
     UnallowedAggFuncUsageWithSrcField(u32, u32),
+
+    #[error("{0}:{1}: unexpected empty record")]
+    EmptyRecord(u32, u32),
 }
 
 impl From<LexerError> for Error {

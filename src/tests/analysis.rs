@@ -82,3 +82,15 @@ fn test_analyze_prevent_using_aggregate_with_source_based_props() {
     .unwrap();
     insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
 }
+
+#[test]
+fn test_analyze_valid_agg_usage() {
+    let query = parse_query(include_str!("./resources/valid_agg_usage.eql")).unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}
+
+#[test]
+fn test_analyze_reject_agg_in_predicate() {
+    let query = parse_query(include_str!("./resources/reject_agg_in_predicate.eql")).unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}

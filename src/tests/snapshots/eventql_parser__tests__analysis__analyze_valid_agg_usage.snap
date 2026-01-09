@@ -1,0 +1,85 @@
+---
+source: src/tests/analysis.rs
+expression: "query.run_static_analysis(&Default::default())"
+---
+Ok:
+  attrs:
+    pos:
+      line: 1
+      col: 1
+  sources:
+    - binding:
+        name: e
+        pos:
+          line: 1
+          col: 6
+      kind:
+        Name: events
+  predicate: ~
+  group_by: ~
+  order_by: ~
+  limit: ~
+  projection:
+    attrs:
+      pos:
+        line: 2
+        col: 14
+    value:
+      Record:
+        - name: sum
+          value:
+            attrs:
+              pos:
+                line: 3
+                col: 7
+            value:
+              App:
+                func: SUM
+                args:
+                  - attrs:
+                      pos:
+                        line: 3
+                        col: 11
+                    value:
+                      Access:
+                        target:
+                          attrs:
+                            pos:
+                              line: 3
+                              col: 11
+                          value:
+                            Access:
+                              target:
+                                attrs:
+                                  pos:
+                                    line: 3
+                                    col: 11
+                                value:
+                                  Id: e
+                              field: data
+                        field: count
+        - name: label
+          value:
+            attrs:
+              pos:
+                line: 4
+                col: 9
+            value:
+              String: everything summed
+        - name: randomvalue
+          value:
+            attrs:
+              pos:
+                line: 5
+                col: 15
+            value:
+              App:
+                func: RAND
+                args: []
+  distinct: false
+  meta:
+    project:
+      Record:
+        label: String
+        randomvalue: Number
+        sum: Number

@@ -1,0 +1,6 @@
+FROM e IN events
+PROJECT INTO {
+	sum: SUM(e.data.count),
+	label: "everything summed",
+	randomvalue: RAND()
+}
