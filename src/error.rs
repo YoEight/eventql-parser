@@ -279,6 +279,30 @@ pub enum AnalysisError {
     #[error("{0}:{1}: unexpected empty record")]
     EmptyRecord(u32, u32),
 
+    /// An aggregate function was called with an argument that is not a source-bound field.
+    ///
+    /// Fields: `(line, column)`
+    ///
+    /// This occurs when an aggregate function (e.g., SUM, COUNT, AVG) is called with
+    /// an argument that is not derived from source event properties. Aggregate functions
+    /// must operate on fields that come from the source events being queried, not on
+    /// constants, literals, or results from other functions.
+    ///
+    /// # Example
+    ///
+    /// Invalid usage:
+    /// ```eql
+    /// FROM e IN events
+    /// // Error: RAND() is constant value
+    /// PROJECT INTO { sum: SUM(RAND()) }
+    /// ```
+    ///
+    /// Valid usage:
+    /// ```eql
+    /// FROM e IN events
+    /// PROJECT INTO { sum: SUM(e.data.price) }
+    /// -- OK: e.data.price is a source-bound field
+    /// ```
     #[error("{0}:{1}: aggregate functions arguments must be source-bound fields")]
     ExpectSourceBoundProperty(u32, u32),
 }

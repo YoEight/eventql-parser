@@ -453,6 +453,7 @@ impl Default for AnalysisOptions {
 /// - Function calls have the correct argument types
 /// - Aggregate functions are only used in PROJECT INTO clauses
 /// - Aggregate functions are not mixed with source-bound fields in projections
+/// - Aggregate function arguments are source-bound fields (not constants or function results)
 /// - Record literals are non-empty in projection contexts
 ///
 /// # Arguments

@@ -547,6 +547,7 @@ impl Query<Raw> {
     /// - Correct function argument types and counts
     /// - Aggregate function usage restrictions (only in PROJECT INTO)
     /// - No mixing of aggregate functions with source-bound fields
+    /// - Aggregate function arguments are source-bound fields
     /// - Non-empty record literals in projections
     ///
     /// # Arguments
