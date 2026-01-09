@@ -249,7 +249,6 @@ pub enum AnalysisError {
     /// Valid usage:
     /// ```eql
     /// FROM e IN events
-    /// // OK: only using aggregate functions and constants
     /// PROJECT INTO { sum: SUM(e.data.price), label: "total" }
     /// ```
     #[error("{0}:{1}: aggregate functions cannot be used with source-bound fields")]
@@ -301,7 +300,6 @@ pub enum AnalysisError {
     /// ```eql
     /// FROM e IN events
     /// PROJECT INTO { sum: SUM(e.data.price) }
-    /// -- OK: e.data.price is a source-bound field
     /// ```
     #[error("{0}:{1}: aggregate functions arguments must be source-bound fields")]
     ExpectSourceBoundProperty(u32, u32),
