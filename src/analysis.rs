@@ -8,7 +8,8 @@ use serde::Serialize;
 use unicase::Ascii;
 
 use crate::{
-    Attrs, Expr, Query, Raw, Source, SourceKind, Type, Value, error::AnalysisError, token::Operator,
+    Attrs, Expr, Field, Query, Raw, Source, SourceKind, Type, Value, error::AnalysisError,
+    token::Operator,
 };
 
 /// Represents the state of a query that has been statically analyzed.
@@ -490,10 +491,9 @@ impl Scope {
 enum Frame {}
 
 #[derive(Default)]
-struct Context {
-    analyzing_projection: bool,
+struct CheckContext {
     use_agg_func: bool,
-    use_only_constant_expr: bool,
+    use_source_based: bool,
 }
 
 struct Analysis<'a> {
@@ -538,7 +538,7 @@ impl<'a> Analysis<'a> {
         }
 
         if let Some(expr) = &query.predicate {
-            self.analyze_expr(&mut Context::default(), expr, Type::Bool)?;
+            self.analyze_expr(expr, Type::Bool)?;
         }
 
         if let Some(group_by) = &query.group_by {
@@ -549,10 +549,10 @@ impl<'a> Analysis<'a> {
                 ));
             }
 
-            self.analyze_expr(&mut Context::default(), &group_by.expr, Type::Unspecified)?;
+            self.analyze_expr(&group_by.expr, Type::Unspecified)?;
 
             if let Some(expr) = &group_by.predicate {
-                self.analyze_expr(&mut Context::default(), expr, Type::Bool)?;
+                self.analyze_expr(expr, Type::Bool)?;
             }
         }
 
@@ -563,23 +563,10 @@ impl<'a> Analysis<'a> {
                     order_by.expr.attrs.pos.col,
                 ));
             }
-            self.analyze_expr(&mut Context::default(), &order_by.expr, Type::Unspecified)?;
+            self.analyze_expr(&order_by.expr, Type::Unspecified)?;
         }
 
-        if !matches!(&query.projection.value, Value::Record(_) | Value::Id(_)) {
-            return Err(AnalysisError::ExpectRecordLiteral(
-                query.projection.attrs.pos.line,
-                query.projection.attrs.pos.col,
-            ));
-        }
-
-        let mut ctx = Context {
-            analyzing_projection: true,
-            use_only_constant_expr: true,
-            ..Default::default()
-        };
-
-        let project = self.analyze_expr(&mut ctx, &query.projection, Type::Unspecified)?;
+        let project = self.analyze_projection(&query.projection)?;
 
         if !matches!(&project, Type::Record(f) if !f.is_empty()) {
             return Err(AnalysisError::ExpectRecord(
@@ -641,18 +628,95 @@ impl<'a> Analysis<'a> {
         }
     }
 
-    fn analyze_expr(
+    fn analyze_projection(&mut self, expr: &Expr) -> AnalysisResult<Type> {
+        match &expr.value {
+            Value::Record(record) => {
+                let tpe = self.analyze_expr(expr, Type::Unspecified)?;
+                self.check_projection_on_record(&mut CheckContext::default(), record.as_slice())?;
+                Ok(tpe)
+            }
+
+            Value::Id(id) => {
+                if let Some(tpe) = self.scope.entries.get(id).cloned() {
+                    if matches!(tpe, Type::Record(_)) {
+                        Ok(tpe)
+                    } else {
+                        Err(AnalysisError::ExpectRecord(
+                            expr.attrs.pos.line,
+                            expr.attrs.pos.col,
+                            tpe,
+                        ))
+                    }
+                } else {
+                    Err(AnalysisError::VariableUndeclared(
+                        expr.attrs.pos.line,
+                        expr.attrs.pos.col,
+                        id.clone(),
+                    ))
+                }
+            }
+
+            _ => Err(AnalysisError::ExpectRecord(
+                expr.attrs.pos.line,
+                expr.attrs.pos.col,
+                self.project_type(&expr.value),
+            )),
+        }
+    }
+
+    fn check_projection_on_record(
         &mut self,
-        ctx: &mut Context,
+        ctx: &mut CheckContext,
+        record: &[Field],
+    ) -> AnalysisResult<()> {
+        for field in record {
+            self.check_projection_on_field(ctx, field)?;
+        }
+
+        Ok(())
+    }
+
+    fn check_projection_on_field(
+        &mut self,
+        ctx: &mut CheckContext,
+        field: &Field,
+    ) -> AnalysisResult<()> {
+        self.check_projection_on_field_expr(ctx, &field.value)
+    }
+
+    fn check_projection_on_field_expr(
+        &mut self,
+        ctx: &mut CheckContext,
         expr: &Expr,
-        expect: Type,
-    ) -> AnalysisResult<Type> {
-        self.analyze_value(ctx, &expr.attrs, &expr.value, expect)
+    ) -> AnalysisResult<()> {
+        match &expr.value {
+            Value::Number(_) | Value::String(_) | Value::Bool(_) => Ok(()),
+            Value::Id(id) => {
+                if ctx.use_agg_func && self.scope.entries.contains_key(id) {
+                    Err(AnalysisError::UnallowedAggFuncUsageWithSrcField(
+                        expr.attrs.pos.line,
+                        expr.attrs.pos.col,
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+            Value::Array(exprs) => todo!(),
+            Value::Record(fields) => todo!(),
+            Value::Access(access) => todo!(),
+            Value::App(app) => todo!(),
+            Value::Binary(binary) => todo!(),
+            Value::Unary(unary) => todo!(),
+            Value::Group(expr) => todo!(),
+        }
+    }
+
+    fn analyze_expr(&mut self, expr: &Expr, expect: Type) -> AnalysisResult<Type> {
+        self.analyze_value(&expr.attrs, &expr.value, expect)
     }
 
     fn analyze_value(
         &mut self,
-        ctx: &mut Context,
         attrs: &Attrs,
         value: &Value,
         mut expect: Type,
@@ -669,15 +733,6 @@ impl<'a> Analysis<'a> {
                     let tmp = mem::take(tpe);
                     *tpe = tmp.check(attrs, expect)?;
 
-                    if ctx.use_agg_func {
-                        return Err(AnalysisError::UnallowedAggFuncUsageWithSrcField(
-                            attrs.pos.line,
-                            attrs.pos.col,
-                        ));
-                    }
-
-                    ctx.use_only_constant_expr = false;
-
                     Ok(tpe.clone())
                 } else {
                     Err(AnalysisError::VariableUndeclared(
@@ -691,7 +746,7 @@ impl<'a> Analysis<'a> {
             Value::Array(exprs) => {
                 if matches!(expect, Type::Unspecified) {
                     for expr in exprs {
-                        expect = self.analyze_expr(ctx, expr, expect)?;
+                        expect = self.analyze_expr(expr, expect)?;
                     }
 
                     return Ok(Type::Array(Box::new(expect)));
@@ -700,7 +755,7 @@ impl<'a> Analysis<'a> {
                 match expect {
                     Type::Array(mut expect) => {
                         for expr in exprs {
-                            *expect = self.analyze_expr(ctx, expr, expect.as_ref().clone())?;
+                            *expect = self.analyze_expr(expr, expect.as_ref().clone())?;
                         }
 
                         Ok(Type::Array(expect))
@@ -723,7 +778,6 @@ impl<'a> Analysis<'a> {
                         record.insert(
                             field.name.clone(),
                             self.analyze_value(
-                                ctx,
                                 &field.value.attrs,
                                 &field.value.value,
                                 Type::Unspecified,
@@ -740,7 +794,7 @@ impl<'a> Analysis<'a> {
                             if let Some(tpe) = types.remove(field.name.as_str()) {
                                 types.insert(
                                     field.name.clone(),
-                                    self.analyze_expr(ctx, &field.value, tpe)?,
+                                    self.analyze_expr(&field.value, tpe)?,
                                 );
                             } else {
                                 return Err(AnalysisError::FieldUndeclared(
@@ -773,23 +827,6 @@ impl<'a> Analysis<'a> {
                         aggregate,
                     } = tpe
                 {
-                    if !ctx.analyzing_projection && *aggregate {
-                        return Err(AnalysisError::WrongAggFunUsage(
-                            attrs.pos.line,
-                            attrs.pos.col,
-                            app.func.clone(),
-                        ));
-                    }
-
-                    if !ctx.use_only_constant_expr {
-                        return Err(AnalysisError::UnallowedAggFuncUsageWithSrcField(
-                            attrs.pos.line,
-                            attrs.pos.col,
-                        ));
-                    }
-
-                    ctx.use_agg_func = true;
-
                     if args.len() != app.args.len() {
                         return Err(AnalysisError::FunWrongArgumentCount(
                             attrs.pos.line,
@@ -800,8 +837,16 @@ impl<'a> Analysis<'a> {
                         ));
                     }
 
+                    if *aggregate {
+                        return Err(AnalysisError::WrongAggFunUsage(
+                            attrs.pos.line,
+                            attrs.pos.col,
+                            app.func.clone(),
+                        ));
+                    }
+
                     for (arg, tpe) in app.args.iter().zip(args.iter().cloned()) {
-                        self.analyze_expr(ctx, arg, tpe)?;
+                        self.analyze_expr(arg, tpe)?;
                     }
 
                     // TODO - check if we are dealing with an aggregate function while not in a
@@ -823,8 +868,8 @@ impl<'a> Analysis<'a> {
 
             Value::Binary(binary) => match binary.operator {
                 Operator::Add | Operator::Sub | Operator::Mul | Operator::Div => {
-                    self.analyze_expr(ctx, &binary.lhs, Type::Number)?;
-                    self.analyze_expr(ctx, &binary.rhs, Type::Number)?;
+                    self.analyze_expr(&binary.lhs, Type::Number)?;
+                    self.analyze_expr(&binary.rhs, Type::Number)?;
                     expect.check(attrs, Type::Number)
                 }
 
@@ -834,26 +879,23 @@ impl<'a> Analysis<'a> {
                 | Operator::Lte
                 | Operator::Gt
                 | Operator::Gte => {
-                    let lhs_expect = self.analyze_expr(ctx, &binary.lhs, Type::Unspecified)?;
-                    let rhs_expect = self.analyze_expr(ctx, &binary.rhs, lhs_expect.clone())?;
+                    let lhs_expect = self.analyze_expr(&binary.lhs, Type::Unspecified)?;
+                    let rhs_expect = self.analyze_expr(&binary.rhs, lhs_expect.clone())?;
 
                     // If the left side didn't have enough type information while the other did,
                     // we replay another typecheck pass on the left side if the right side was conclusive
                     if matches!(lhs_expect, Type::Unspecified)
                         && !matches!(rhs_expect, Type::Unspecified)
                     {
-                        self.analyze_expr(ctx, &binary.lhs, rhs_expect)?;
+                        self.analyze_expr(&binary.lhs, rhs_expect)?;
                     }
 
                     expect.check(attrs, Type::Bool)
                 }
 
                 Operator::Contains => {
-                    let lhs_expect = self.analyze_expr(
-                        ctx,
-                        &binary.lhs,
-                        Type::Array(Box::new(Type::Unspecified)),
-                    )?;
+                    let lhs_expect =
+                        self.analyze_expr(&binary.lhs, Type::Array(Box::new(Type::Unspecified)))?;
 
                     let lhs_assumption = match lhs_expect {
                         Type::Array(inner) => *inner,
@@ -866,22 +908,22 @@ impl<'a> Analysis<'a> {
                         }
                     };
 
-                    let rhs_expect = self.analyze_expr(ctx, &binary.rhs, lhs_assumption.clone())?;
+                    let rhs_expect = self.analyze_expr(&binary.rhs, lhs_assumption.clone())?;
 
                     // If the left side didn't have enough type information while the other did,
                     // we replay another typecheck pass on the left side if the right side was conclusive
                     if matches!(lhs_assumption, Type::Unspecified)
                         && !matches!(rhs_expect, Type::Unspecified)
                     {
-                        self.analyze_expr(ctx, &binary.lhs, Type::Array(Box::new(rhs_expect)))?;
+                        self.analyze_expr(&binary.lhs, Type::Array(Box::new(rhs_expect)))?;
                     }
 
                     expect.check(attrs, Type::Bool)
                 }
 
                 Operator::And | Operator::Or | Operator::Xor => {
-                    self.analyze_expr(ctx, &binary.lhs, Type::Bool)?;
-                    self.analyze_expr(ctx, &binary.rhs, Type::Bool)?;
+                    self.analyze_expr(&binary.lhs, Type::Bool)?;
+                    self.analyze_expr(&binary.rhs, Type::Bool)?;
 
                     expect.check(attrs, Type::Bool)
                 }
@@ -910,19 +952,19 @@ impl<'a> Analysis<'a> {
 
             Value::Unary(unary) => match unary.operator {
                 Operator::Add | Operator::Sub => {
-                    self.analyze_expr(ctx, &unary.expr, Type::Number)?;
+                    self.analyze_expr(&unary.expr, Type::Number)?;
                     expect.check(attrs, Type::Number)
                 }
 
                 Operator::Not => {
-                    self.analyze_expr(ctx, &unary.expr, Type::Bool)?;
+                    self.analyze_expr(&unary.expr, Type::Bool)?;
                     expect.check(attrs, Type::Bool)
                 }
 
                 _ => unreachable!(),
             },
 
-            Value::Group(expr) => Ok(self.analyze_expr(ctx, expr.as_ref(), expect)?),
+            Value::Group(expr) => Ok(self.analyze_expr(expr.as_ref(), expect)?),
         }
     }
 
