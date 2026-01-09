@@ -748,6 +748,10 @@ impl<'a> Analysis<'a> {
                     }
 
                     for arg in &app.args {
+                        if *aggregate {
+                            self.ensure_agg_param_is_source_bound(arg)?;
+                        }
+
                         self.invalidate_agg_func_usage(arg)?;
                     }
                 }
@@ -762,6 +766,17 @@ impl<'a> Analysis<'a> {
 
             Value::Unary(unary) => self.check_projection_on_field_expr(ctx, &unary.expr),
             Value::Group(expr) => self.check_projection_on_field_expr(ctx, expr),
+        }
+    }
+
+    fn ensure_agg_param_is_source_bound(&mut self, expr: &Expr) -> AnalysisResult<()> {
+        match &expr.value {
+            Value::Id(id) if !self.options.default_scope.entries.contains_key(id) => Ok(()),
+            Value::Access(access) => self.ensure_agg_param_is_source_bound(&access.target),
+            _ => Err(AnalysisError::ExpectSourceBoundProperty(
+                expr.attrs.pos.line,
+                expr.attrs.pos.col,
+            )),
         }
     }
 
@@ -947,9 +962,6 @@ impl<'a> Analysis<'a> {
                     for (arg, tpe) in app.args.iter().zip(args.iter().cloned()) {
                         self.analyze_expr(ctx, arg, tpe)?;
                     }
-
-                    // TODO - check if we are dealing with an aggregate function while not in a
-                    // projection expression.
 
                     if matches!(expect, Type::Unspecified) {
                         Ok(result.as_ref().clone())

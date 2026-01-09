@@ -94,3 +94,9 @@ fn test_analyze_reject_agg_in_predicate() {
     let query = parse_query(include_str!("./resources/reject_agg_in_predicate.eql")).unwrap();
     insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
 }
+
+#[test]
+fn test_analyze_agg_must_use_source_bound() {
+    let query = parse_query(include_str!("./resources/agg_must_use_source_bound.eql")).unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}
