@@ -487,9 +487,6 @@ impl Scope {
     }
 }
 
-// TODO - find a better name
-enum Frame {}
-
 #[derive(Default)]
 struct CheckContext {
     use_agg_func: bool,
@@ -691,23 +688,64 @@ impl<'a> Analysis<'a> {
     ) -> AnalysisResult<()> {
         match &expr.value {
             Value::Number(_) | Value::String(_) | Value::Bool(_) => Ok(()),
+
             Value::Id(id) => {
-                if ctx.use_agg_func && self.scope.entries.contains_key(id) {
-                    Err(AnalysisError::UnallowedAggFuncUsageWithSrcField(
-                        expr.attrs.pos.line,
-                        expr.attrs.pos.col,
-                    ))
-                } else {
-                    Ok(())
+                if self.scope.entries.contains_key(id) {
+                    if ctx.use_agg_func {
+                        return Err(AnalysisError::UnallowedAggFuncUsageWithSrcField(
+                            expr.attrs.pos.line,
+                            expr.attrs.pos.col,
+                        ));
+                    }
+
+                    ctx.use_source_based = true;
                 }
+
+                Ok(())
             }
-            Value::Array(exprs) => todo!(),
-            Value::Record(fields) => todo!(),
-            Value::Access(access) => todo!(),
-            Value::App(app) => todo!(),
-            Value::Binary(binary) => todo!(),
-            Value::Unary(unary) => todo!(),
-            Value::Group(expr) => todo!(),
+
+            Value::Array(exprs) => {
+                for expr in exprs {
+                    self.check_projection_on_field_expr(ctx, expr)?;
+                }
+
+                Ok(())
+            }
+
+            Value::Record(fields) => {
+                for field in fields {
+                    self.check_projection_on_field(ctx, field)?;
+                }
+
+                Ok(())
+            }
+
+            Value::Access(access) => self.check_projection_on_field_expr(ctx, &access.target),
+
+            Value::App(app) => {
+                if let Some(Type::App { aggregate, .. }) =
+                    self.options.default_scope.entries.get(app.func.as_str())
+                {
+                    ctx.use_agg_func |= *aggregate;
+
+                    if ctx.use_agg_func && ctx.use_source_based {
+                        return Err(AnalysisError::UnallowedAggFuncUsageWithSrcField(
+                            expr.attrs.pos.line,
+                            expr.attrs.pos.col,
+                        ));
+                    }
+                }
+
+                Ok(())
+            }
+
+            Value::Binary(binary) => {
+                self.check_projection_on_field_expr(ctx, &binary.lhs)?;
+                self.check_projection_on_field_expr(ctx, &binary.rhs)
+            }
+
+            Value::Unary(unary) => self.check_projection_on_field_expr(ctx, &unary.expr),
+            Value::Group(expr) => self.check_projection_on_field_expr(ctx, expr),
         }
     }
 
@@ -837,13 +875,13 @@ impl<'a> Analysis<'a> {
                         ));
                     }
 
-                    if *aggregate {
-                        return Err(AnalysisError::WrongAggFunUsage(
-                            attrs.pos.line,
-                            attrs.pos.col,
-                            app.func.clone(),
-                        ));
-                    }
+                    // if *aggregate {
+                    //     return err(analysiserror::wrongaggfunusage(
+                    //         attrs.pos.line,
+                    //         attrs.pos.col,
+                    //         app.func.clone(),
+                    //     ));
+                    // }
 
                     for (arg, tpe) in app.args.iter().zip(args.iter().cloned()) {
                         self.analyze_expr(arg, tpe)?;
