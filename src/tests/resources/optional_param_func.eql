@@ -1,0 +1,2 @@
+FROM e IN events
+PROJECT INTO { voters: COUNT(e.data.age > 30 ) }

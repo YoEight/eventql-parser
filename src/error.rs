@@ -132,7 +132,7 @@ pub enum AnalysisError {
     ///
     /// This occurs when an expression has a different type than what is
     /// required by its context (e.g., using a string where a number is expected).
-    #[error("{0}:{1}: type mismatch: expected {2:?} but got {3:?} ")]
+    #[error("{0}:{1}: type mismatch: expected {2} but got {3} ")]
     TypeMismatch(u32, u32, Type, Type),
 
     /// A record field was accessed but doesn't exist in the record type.
@@ -141,7 +141,7 @@ pub enum AnalysisError {
     ///
     /// This occurs when trying to access a field that is not defined in the
     /// record's type definition.
-    #[error("{0}:{1}: record field '{2:?}' is undeclared ")]
+    #[error("{0}:{1}: record field '{2}' is undeclared ")]
     FieldUndeclared(u32, u32, String),
 
     /// A function was called but is not declared in the scope.
@@ -150,7 +150,7 @@ pub enum AnalysisError {
     ///
     /// This occurs when calling a function that is not defined in the default
     /// scope or any accessible scope.
-    #[error("{0}:{1}: function '{2:?}' is undeclared ")]
+    #[error("{0}:{1}: function '{2}' is undeclared ")]
     FuncUndeclared(u32, u32, String),
 
     /// Expected a record type but found a different type.
@@ -159,7 +159,7 @@ pub enum AnalysisError {
     ///
     /// This occurs when a record type is required (e.g., for field access)
     /// but a different type was found.
-    #[error("{0}:{1}: expected record but got {2:?}")]
+    #[error("{0}:{1}: expected record but got {2}")]
     ExpectRecord(u32, u32, Type),
 
     /// Expected an array type but found a different type.
@@ -167,7 +167,7 @@ pub enum AnalysisError {
     /// Fields: `(line, column, actual_type)`
     ///
     /// This occurs when an array type is required but a different type was found.
-    #[error("{0}:{1}: expected an array but got {2:?}")]
+    #[error("{0}:{1}: expected an array but got {2}")]
     ExpectArray(u32, u32, Type),
 
     /// Expected a field literal but found a different expression.
@@ -195,12 +195,12 @@ pub enum AnalysisError {
 
     /// A function was called with the wrong number of arguments.
     ///
-    /// Fields: `(line, column, function_name, expected_count, actual_count)`
+    /// Fields: `(line, column, function_name)`
     ///
     /// This occurs when calling a function with a different number of arguments
     /// than what the function signature requires.
-    #[error("{0}:{1}: function '{2}' requires {3} parameters but got {4}")]
-    FunWrongArgumentCount(u32, u32, String, usize, usize),
+    #[error("{0}:{1}: incorrect number of arguments supplied to function '{2}'")]
+    FunWrongArgumentCount(u32, u32, String),
 
     /// An aggregate function was used outside of a PROJECT INTO clause.
     ///

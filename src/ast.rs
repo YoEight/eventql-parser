@@ -11,7 +11,11 @@
 //! - [`Value`] - The various kinds of expression values (literals, operators, etc.)
 //! - [`Source`] - Data sources in FROM clauses
 //!
-use std::{collections::BTreeMap, mem};
+use std::{
+    collections::BTreeMap,
+    fmt::{self, Display},
+    mem,
+};
 
 use crate::{
     analysis::{AnalysisOptions, Typed, static_analysis},
@@ -51,10 +55,39 @@ impl From<Token<'_>> for Pos {
     }
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct FunArgs {
+    pub values: Vec<Type>,
+    pub needed: usize,
+}
+
+impl FunArgs {
+    pub fn required(args: Vec<Type>) -> Self {
+        Self {
+            needed: args.len(),
+            values: args,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    pub fn match_arg_count(&self, cnt: usize) -> bool {
+        cnt >= self.needed && cnt <= self.values.len()
+    }
+}
+
+impl From<Vec<Type>> for FunArgs {
+    fn from(value: Vec<Type>) -> Self {
+        Self::required(value)
+    }
+}
+
 /// Type information for expressions.
 ///
 /// This enum represents the type of an expression in the E
-#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub enum Type {
     /// Type has not been determined yet
     #[default]
@@ -73,7 +106,7 @@ pub enum Type {
     Subject,
     /// Function type
     App {
-        args: Vec<Type>,
+        args: FunArgs,
         result: Box<Type>,
         aggregate: bool,
     },
@@ -104,6 +137,65 @@ pub enum Type {
     /// let typed_query = query.run_static_analysis(&options).unwrap();
     /// ```
     Custom(String),
+}
+
+impl Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Type::Unspecified => write!(f, "any"),
+            Type::Number => write!(f, "number"),
+            Type::String => write!(f, "string"),
+            Type::Bool => write!(f, "boolean"),
+            Type::Array(tpe) => write!(f, "[]{tpe}"),
+            Type::Record(map) => {
+                write!(f, "{{ ")?;
+
+                for (idx, (name, value)) in map.iter().enumerate() {
+                    if idx != 0 {
+                        write!(f, ", ")?;
+                    }
+
+                    write!(f, "{name}: {value}")?;
+                }
+
+                write!(f, " }}")
+            }
+            Type::Subject => write!(f, "subject"),
+            Type::App {
+                args,
+                result,
+                aggregate,
+            } => {
+                write!(f, "(")?;
+
+                for (idx, arg) in args.values.iter().enumerate() {
+                    if idx != 0 {
+                        write!(f, ", ")?;
+                    }
+
+                    write!(f, "{arg}")?;
+
+                    if idx + 1 > args.needed {
+                        write!(f, "?")?;
+                    }
+                }
+
+                write!(f, ")")?;
+
+                if *aggregate {
+                    write!(f, " => ")?;
+                } else {
+                    write!(f, " -> ")?;
+                }
+
+                write!(f, "{result}")
+            }
+            Type::Date => write!(f, "date"),
+            Type::Time => write!(f, "time"),
+            Type::DateTime => write!(f, "datetime"),
+            Type::Custom(n) => write!(f, "{}", n.to_lowercase()),
+        }
+    }
 }
 
 impl Type {
@@ -180,7 +272,7 @@ impl Type {
                     result: b_res,
                     aggregate: b_agg,
                 },
-            ) if a_args.len() == b_args.len() && a_agg == b_agg => {
+            ) if a_args.values.len() == b_args.values.len() && a_agg == b_agg => {
                 if a_args.is_empty() {
                     let tmp = mem::take(a_res.as_mut());
                     *a_res = tmp.check(attrs, *b_res)?;
@@ -191,7 +283,7 @@ impl Type {
                     });
                 }
 
-                for (a, b) in a_args.iter_mut().zip(b_args.into_iter()) {
+                for (a, b) in a_args.values.iter_mut().zip(b_args.values.into_iter()) {
                     let tmp = mem::take(a);
                     *a = tmp.check(attrs, b)?;
                 }

@@ -1,0 +1,80 @@
+---
+source: src/tests/analysis.rs
+expression: "query.run_static_analysis(&Default::default())"
+---
+Ok:
+  attrs:
+    pos:
+      line: 1
+      col: 1
+  sources:
+    - binding:
+        name: e
+        pos:
+          line: 1
+          col: 6
+      kind:
+        Name: events
+  predicate: ~
+  group_by: ~
+  order_by: ~
+  limit: ~
+  projection:
+    attrs:
+      pos:
+        line: 2
+        col: 14
+    value:
+      Record:
+        - name: voters
+          value:
+            attrs:
+              pos:
+                line: 2
+                col: 24
+            value:
+              App:
+                func: COUNT
+                args:
+                  - attrs:
+                      pos:
+                        line: 2
+                        col: 30
+                    value:
+                      Binary:
+                        lhs:
+                          attrs:
+                            pos:
+                              line: 2
+                              col: 30
+                          value:
+                            Access:
+                              target:
+                                attrs:
+                                  pos:
+                                    line: 2
+                                    col: 30
+                                value:
+                                  Access:
+                                    target:
+                                      attrs:
+                                        pos:
+                                          line: 2
+                                          col: 30
+                                      value:
+                                        Id: e
+                                    field: data
+                              field: age
+                        operator: Gt
+                        rhs:
+                          attrs:
+                            pos:
+                              line: 2
+                              col: 43
+                          value:
+                            Number: 30
+  distinct: false
+  meta:
+    project:
+      Record:
+        voters: Number

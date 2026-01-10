@@ -100,3 +100,9 @@ fn test_analyze_agg_must_use_source_bound() {
     let query = parse_query(include_str!("./resources/agg_must_use_source_bound.eql")).unwrap();
     insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
 }
+
+#[test]
+fn test_analyze_optional_param_func() {
+    let query = parse_query(include_str!("./resources/optional_param_func.eql")).unwrap();
+    insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}
