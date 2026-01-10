@@ -378,6 +378,12 @@ impl Type {
             (Self::Date, Self::Date) => Ok(Self::Date),
             (Self::Time, Self::Time) => Ok(Self::Time),
             (Self::DateTime, Self::DateTime) => Ok(Self::DateTime),
+
+            // `DateTime` can be implicitly cast to `Date` or `Time`
+            (Self::DateTime, Self::Date) => Ok(Self::Date),
+            (Self::Date, Self::DateTime) => Ok(Self::Date),
+            (Self::DateTime, Self::Time) => Ok(Self::Time),
+            (Self::Time, Self::DateTime) => Ok(Self::Time),
             (Self::Custom(a), Self::Custom(b)) if a.eq_ignore_ascii_case(b.as_str()) => {
                 Ok(Self::Custom(a))
             }

@@ -21,13 +21,13 @@ use crate::{Binding, GroupBy, Raw};
 /// This is a convenience alias for `Result<T, ParserError>`.
 pub type ParseResult<A> = Result<A, ParserError>;
 
-struct Parser<'a> {
+pub struct Parser<'a> {
     input: &'a [Token<'a>],
     offset: usize,
 }
 
 impl<'a> Parser<'a> {
-    fn new(input: &'a [Token<'a>]) -> Self {
+    pub fn new(input: &'a [Token<'a>]) -> Self {
         Self { input, offset: 0 }
     }
 
@@ -182,7 +182,7 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn parse_expr(&mut self) -> ParseResult<Expr> {
+    pub fn parse_expr(&mut self) -> ParseResult<Expr> {
         let token = self.peek();
 
         match token.sym {

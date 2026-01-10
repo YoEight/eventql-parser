@@ -281,14 +281,14 @@ impl Default for AnalysisOptions {
                         "NOW".to_owned(),
                         Type::App {
                             args: vec![].into(),
-                            result: Box::new(Type::String),
+                            result: Box::new(Type::DateTime),
                             aggregate: false,
                         },
                     ),
                     (
                         "YEAR".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Date].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -296,7 +296,7 @@ impl Default for AnalysisOptions {
                     (
                         "MONTH".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Date].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -304,7 +304,7 @@ impl Default for AnalysisOptions {
                     (
                         "DAY".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Date].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -312,7 +312,7 @@ impl Default for AnalysisOptions {
                     (
                         "HOUR".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Time].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -320,7 +320,7 @@ impl Default for AnalysisOptions {
                     (
                         "MINUTE".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Time].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -328,7 +328,7 @@ impl Default for AnalysisOptions {
                     (
                         "SECOND".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Time].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -336,7 +336,7 @@ impl Default for AnalysisOptions {
                     (
                         "WEEKDAY".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Date].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -429,7 +429,7 @@ impl Default for AnalysisOptions {
             event_type_info: Type::Record(BTreeMap::from([
                 ("specversion".to_owned(), Type::String),
                 ("id".to_owned(), Type::String),
-                ("time".to_owned(), Type::String),
+                ("time".to_owned(), Type::DateTime),
                 ("source".to_owned(), Type::String),
                 ("subject".to_owned(), Type::Subject),
                 ("type".to_owned(), Type::String),
@@ -501,18 +501,18 @@ struct CheckContext {
 }
 
 #[derive(Default)]
-struct AnalysisContext {
+pub struct AnalysisContext {
     allow_agg_func: bool,
 }
 
-struct Analysis<'a> {
-    options: &'a AnalysisOptions,
-    prev_scopes: Vec<Scope>,
-    scope: Scope,
+pub struct Analysis<'a> {
+    pub options: &'a AnalysisOptions,
+    pub prev_scopes: Vec<Scope>,
+    pub scope: Scope,
 }
 
 impl<'a> Analysis<'a> {
-    fn new(options: &'a AnalysisOptions) -> Self {
+    pub fn new(options: &'a AnalysisOptions) -> Self {
         Self {
             options,
             prev_scopes: Default::default(),
@@ -892,7 +892,7 @@ impl<'a> Analysis<'a> {
         }
     }
 
-    fn analyze_expr(
+    pub fn analyze_expr(
         &mut self,
         ctx: &AnalysisContext,
         expr: &Expr,
