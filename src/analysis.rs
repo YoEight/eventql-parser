@@ -500,24 +500,49 @@ struct CheckContext {
     use_source_based: bool,
 }
 
+/// Context for controlling analysis behavior.
+///
+/// This struct allows you to configure how expressions are analyzed,
+/// such as whether aggregate functions are allowed in the current context.
 #[derive(Default)]
 pub struct AnalysisContext {
-    allow_agg_func: bool,
+    /// Controls whether aggregate functions (like COUNT, SUM, AVG) are allowed
+    /// in the current analysis context.
+    ///
+    /// Set to `true` to allow aggregate functions, `false` to reject them.
+    /// Defaults to `false`.
+    pub allow_agg_func: bool,
 }
 
+/// A type checker and static analyzer for EventQL expressions.
+///
+/// This struct maintains the analysis state including scopes and type information.
+/// It can be used to perform type checking on individual expressions or entire queries.
 pub struct Analysis<'a> {
-    pub options: &'a AnalysisOptions,
-    pub prev_scopes: Vec<Scope>,
-    pub scope: Scope,
+    /// The analysis options containing type information for functions and event types.
+    options: &'a AnalysisOptions,
+    /// Stack of previous scopes for nested scope handling.
+    prev_scopes: Vec<Scope>,
+    /// The current scope containing variable bindings and their types.
+    scope: Scope,
 }
 
 impl<'a> Analysis<'a> {
+    /// Creates a new analysis instance with the given options.
     pub fn new(options: &'a AnalysisOptions) -> Self {
         Self {
             options,
             prev_scopes: Default::default(),
             scope: Scope::default(),
         }
+    }
+
+    pub fn scope(&self) -> &Scope {
+        &self.scope
+    }
+
+    pub fn scope_mut(&mut self) -> &mut Scope {
+        &mut self.scope
     }
 
     fn enter_scope(&mut self) {
@@ -537,7 +562,7 @@ impl<'a> Analysis<'a> {
         }
     }
 
-    fn analyze_query(&mut self, query: Query<Raw>) -> AnalysisResult<Query<Typed>> {
+    pub fn analyze_query(&mut self, query: Query<Raw>) -> AnalysisResult<Query<Typed>> {
         self.enter_scope();
 
         let mut sources = Vec::with_capacity(query.sources.len());
@@ -892,6 +917,35 @@ impl<'a> Analysis<'a> {
         }
     }
 
+    /// Analyzes an expression and checks it against an expected type.
+    ///
+    /// This method performs type checking on an expression, verifying that all operations
+    /// are type-safe and that the expression's type is compatible with the expected type.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The analysis context controlling analysis behavior
+    /// * `expr` - The expression to analyze
+    /// * `expect` - The expected type of the expression
+    ///
+    /// # Returns
+    ///
+    /// Returns the actual type of the expression after checking compatibility with the expected type,
+    /// or an error if type checking fails.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use eventql_parser::prelude::{tokenize, Parser, Analysis, AnalysisContext, AnalysisOptions, Type};
+    ///
+    /// let tokens = tokenize("1 + 2").unwrap();
+    /// let expr = Parser::new(tokens.as_slice()).parse_expr().unwrap();
+    /// let options = AnalysisOptions::default();
+    /// let mut analysis = Analysis::new(&options);
+    ///
+    /// let result = analysis.analyze_expr(&AnalysisContext::default(), &expr, Type::Number);
+    /// assert!(result.is_ok());
+    /// ```
     pub fn analyze_expr(
         &mut self,
         ctx: &AnalysisContext,

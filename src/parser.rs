@@ -21,12 +21,26 @@ use crate::{Binding, GroupBy, Raw};
 /// This is a convenience alias for `Result<T, ParserError>`.
 pub type ParseResult<A> = Result<A, ParserError>;
 
+/// A parser for EventQL expressions and queries.
+///
+/// The parser takes a stream of tokens and builds an abstract syntax tree (AST)
+/// representing the structure of the EventQL query or expression.
 pub struct Parser<'a> {
     input: &'a [Token<'a>],
     offset: usize,
 }
 
 impl<'a> Parser<'a> {
+    /// Creates a new parser from a slice of tokens.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use eventql_parser::prelude::{tokenize, Parser};
+    ///
+    /// let tokens = tokenize("1 + 2").unwrap();
+    /// let parser = Parser::new(tokens.as_slice());
+    /// ```
     pub fn new(input: &'a [Token<'a>]) -> Self {
         Self { input, offset: 0 }
     }
@@ -182,6 +196,23 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    /// Parses a single expression from the token stream.
+    ///
+    /// This method can be used to parse individual expressions rather than complete queries.
+    /// It's useful for testing or for parsing expression fragments.
+    ///
+    /// # Returns
+    ///
+    /// Returns the parsed expression, or a parse error if the tokens don't form a valid expression.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use eventql_parser::prelude::{tokenize, Parser};
+    ///
+    /// let tokens = tokenize("NOW()").unwrap();
+    /// let expr = Parser::new(tokens.as_slice()).parse_expr().unwrap();
+    /// ```
     pub fn parse_expr(&mut self) -> ParseResult<Expr> {
         let token = self.peek();
 

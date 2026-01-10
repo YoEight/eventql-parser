@@ -121,7 +121,7 @@ fn test_typecheck_datetime_contravariance_1() {
     let mut analysis = Analysis::new(&options);
 
     analysis
-        .scope
+        .scope_mut()
         .entries
         .insert("e".to_string(), options.event_type_info.clone());
 
