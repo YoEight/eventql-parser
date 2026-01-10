@@ -55,13 +55,51 @@ impl From<Token<'_>> for Pos {
     }
 }
 
+/// Represents function argument types with optional parameter support.
+///
+/// This type allows defining functions that have both required and optional parameters.
+/// The `needed` field specifies how many arguments are required, while `values` contains
+/// all possible argument types (both required and optional).
+///
+/// # Examples
+///
+/// ```
+/// use eventql_parser::prelude::{FunArgs, Type};
+///
+/// // Function with all required parameters: (number, string)
+/// let required = FunArgs::required(vec![Type::Number, Type::String]);
+/// assert_eq!(required.needed, 2);
+/// assert_eq!(required.values.len(), 2);
+///
+/// // Function with optional parameters: (boolean, number?)
+/// let optional = FunArgs {
+///     values: vec![Type::Bool, Type::Number],
+///     needed: 1, // Only first parameter is required
+/// };
+/// assert!(optional.match_arg_count(1)); // Can call with just boolean
+/// assert!(optional.match_arg_count(2)); // Can call with both
+/// assert!(!optional.match_arg_count(3)); // Cannot call with 3 args
+/// ```
 #[derive(Debug, Serialize, Clone)]
 pub struct FunArgs {
+    /// All argument types, including both required and optional parameters
     pub values: Vec<Type>,
+    /// Number of required arguments (must be <= values.len())
     pub needed: usize,
 }
 
 impl FunArgs {
+    /// Creates a new `FunArgs` where all parameters are required.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::{FunArgs, Type};
+    ///
+    /// let args = FunArgs::required(vec![Type::Number, Type::String]);
+    /// assert_eq!(args.needed, 2);
+    /// assert_eq!(args.values.len(), 2);
+    /// ```
     pub fn required(args: Vec<Type>) -> Self {
         Self {
             needed: args.len(),
@@ -69,10 +107,45 @@ impl FunArgs {
         }
     }
 
+    /// Returns `true` if there are no argument types defined.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::{FunArgs, Type};
+    ///
+    /// let empty = FunArgs::required(vec![]);
+    /// assert!(empty.is_empty());
+    ///
+    /// let not_empty = FunArgs::required(vec![Type::Number]);
+    /// assert!(!not_empty.is_empty());
+    /// ```
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
 
+    /// Checks if a given argument count is valid for this function signature.
+    ///
+    /// Returns `true` if the count is between `needed` (inclusive) and
+    /// `values.len()` (inclusive), meaning all required arguments are
+    /// provided and no extra arguments beyond the optional ones are given.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::{FunArgs, Type};
+    ///
+    /// let args = FunArgs {
+    ///     values: vec![Type::Bool, Type::Number, Type::String],
+    ///     needed: 1, // Only first parameter is required
+    /// };
+    ///
+    /// assert!(!args.match_arg_count(0)); // Missing required argument
+    /// assert!(args.match_arg_count(1));  // Required argument provided
+    /// assert!(args.match_arg_count(2));  // Required + one optional
+    /// assert!(args.match_arg_count(3));  // All arguments provided
+    /// assert!(!args.match_arg_count(4)); // Too many arguments
+    /// ```
     pub fn match_arg_count(&self, cnt: usize) -> bool {
         cnt >= self.needed && cnt <= self.values.len()
     }
@@ -104,10 +177,39 @@ pub enum Type {
     Record(BTreeMap<String, Type>),
     /// Subject pattern type
     Subject,
-    /// Function type
+    /// Function type with support for optional parameters.
+    ///
+    /// The `args` field uses [`FunArgs`] to support both required and optional parameters.
+    /// Optional parameters are indicated when `args.needed < args.values.len()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eventql_parser::prelude::{Type, FunArgs};
+    ///
+    /// // Function with all required parameters: (number, string) -> boolean
+    /// let all_required = Type::App {
+    ///     args: vec![Type::Number, Type::String].into(),
+    ///     result: Box::new(Type::Bool),
+    ///     aggregate: false,
+    /// };
+    ///
+    /// // Aggregate function with optional parameter: (boolean?) => number
+    /// let with_optional = Type::App {
+    ///     args: FunArgs {
+    ///         values: vec![Type::Bool],
+    ///         needed: 0, // All parameters are optional
+    ///     },
+    ///     result: Box::new(Type::Number),
+    ///     aggregate: true,
+    /// };
+    /// ```
     App {
+        /// Function argument types, supporting optional parameters
         args: FunArgs,
+        /// Return type of the function
         result: Box<Type>,
+        /// Whether this is an aggregate function (operates on grouped data)
         aggregate: bool,
     },
     /// Date type (e.g., `2026-01-03`)
@@ -130,7 +232,7 @@ pub enum Type {
     /// # Examples
     ///
     /// ```
-    /// use eventql_parser::prelude::{parse_query, AnalysisOptions};
+    /// use eventql_parser::{parse_query, prelude::AnalysisOptions};
     ///
     /// let query = parse_query("FROM e IN events PROJECT INTO { ts: e.data.timestamp as CustomTimestamp }").unwrap();
     /// let options = AnalysisOptions::default().add_custom_type("CustomTimestamp");
@@ -139,6 +241,53 @@ pub enum Type {
     Custom(String),
 }
 
+/// Provides human-readable string formatting for types.
+///
+/// Function types display optional parameters with a `?` suffix. For example,
+/// a function with signature `(boolean, number?) -> string` accepts 1 or 2 arguments.
+/// Aggregate functions use `=>` instead of `->` in their signature.
+///
+/// # Examples
+///
+/// ```
+/// use eventql_parser::prelude::{Type, FunArgs};
+///
+/// // Basic types
+/// assert_eq!(Type::Number.to_string(), "number");
+/// assert_eq!(Type::String.to_string(), "string");
+/// assert_eq!(Type::Bool.to_string(), "boolean");
+///
+/// // Array type
+/// let arr = Type::Array(Box::new(Type::Number));
+/// assert_eq!(arr.to_string(), "[]number");
+///
+/// // Function with all required parameters
+/// let func = Type::App {
+///     args: vec![Type::Number, Type::String].into(),
+///     result: Box::new(Type::Bool),
+///     aggregate: false,
+/// };
+/// assert_eq!(func.to_string(), "(number, string) -> boolean");
+///
+/// // Function with optional parameters
+/// let func_optional = Type::App {
+///     args: FunArgs {
+///         values: vec![Type::Bool, Type::Number],
+///         needed: 1,
+///     },
+///     result: Box::new(Type::String),
+///     aggregate: false,
+/// };
+/// assert_eq!(func_optional.to_string(), "(boolean, number?) -> string");
+///
+/// // Aggregate function
+/// let agg = Type::App {
+///     args: vec![Type::Number].into(),
+///     result: Box::new(Type::Number),
+///     aggregate: true,
+/// };
+/// assert_eq!(agg.to_string(), "(number) => number");
+/// ```
 impl Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
