@@ -8,8 +8,8 @@ use serde::Serialize;
 use unicase::Ascii;
 
 use crate::{
-    Attrs, Expr, Field, Query, Raw, Source, SourceKind, Type, Value, error::AnalysisError,
-    token::Operator,
+    Attrs, Binary, Expr, Field, FunArgs, Query, Raw, Source, SourceKind, Type, Value,
+    error::AnalysisError, token::Operator,
 };
 
 /// Represents the state of a query that has been statically analyzed.
@@ -112,7 +112,7 @@ impl Default for AnalysisOptions {
                     (
                         "ABS".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -120,7 +120,7 @@ impl Default for AnalysisOptions {
                     (
                         "CEIL".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -128,7 +128,7 @@ impl Default for AnalysisOptions {
                     (
                         "FLOOR".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -136,7 +136,7 @@ impl Default for AnalysisOptions {
                     (
                         "ROUND".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -144,7 +144,7 @@ impl Default for AnalysisOptions {
                     (
                         "COS".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -152,7 +152,7 @@ impl Default for AnalysisOptions {
                     (
                         "EXP".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -160,7 +160,7 @@ impl Default for AnalysisOptions {
                     (
                         "POW".to_owned(),
                         Type::App {
-                            args: vec![Type::Number, Type::Number],
+                            args: vec![Type::Number, Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -168,7 +168,7 @@ impl Default for AnalysisOptions {
                     (
                         "SQRT".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -176,7 +176,7 @@ impl Default for AnalysisOptions {
                     (
                         "RAND".to_owned(),
                         Type::App {
-                            args: vec![],
+                            args: vec![].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -184,7 +184,7 @@ impl Default for AnalysisOptions {
                     (
                         "PI".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -192,7 +192,7 @@ impl Default for AnalysisOptions {
                     (
                         "LOWER".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::String),
                             aggregate: false,
                         },
@@ -200,7 +200,7 @@ impl Default for AnalysisOptions {
                     (
                         "UPPER".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::String),
                             aggregate: false,
                         },
@@ -208,7 +208,7 @@ impl Default for AnalysisOptions {
                     (
                         "TRIM".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::String),
                             aggregate: false,
                         },
@@ -216,7 +216,7 @@ impl Default for AnalysisOptions {
                     (
                         "LTRIM".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::String),
                             aggregate: false,
                         },
@@ -224,7 +224,7 @@ impl Default for AnalysisOptions {
                     (
                         "RTRIM".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::String),
                             aggregate: false,
                         },
@@ -232,7 +232,7 @@ impl Default for AnalysisOptions {
                     (
                         "LEN".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -240,7 +240,7 @@ impl Default for AnalysisOptions {
                     (
                         "INSTR".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -248,7 +248,7 @@ impl Default for AnalysisOptions {
                     (
                         "SUBSTRING".to_owned(),
                         Type::App {
-                            args: vec![Type::String, Type::Number, Type::Number],
+                            args: vec![Type::String, Type::Number, Type::Number].into(),
                             result: Box::new(Type::String),
                             aggregate: false,
                         },
@@ -256,7 +256,7 @@ impl Default for AnalysisOptions {
                     (
                         "REPLACE".to_owned(),
                         Type::App {
-                            args: vec![Type::String, Type::String, Type::String],
+                            args: vec![Type::String, Type::String, Type::String].into(),
                             result: Box::new(Type::String),
                             aggregate: false,
                         },
@@ -264,7 +264,7 @@ impl Default for AnalysisOptions {
                     (
                         "STARTSWITH".to_owned(),
                         Type::App {
-                            args: vec![Type::String, Type::String],
+                            args: vec![Type::String, Type::String].into(),
                             result: Box::new(Type::Bool),
                             aggregate: false,
                         },
@@ -272,7 +272,7 @@ impl Default for AnalysisOptions {
                     (
                         "ENDSWITH".to_owned(),
                         Type::App {
-                            args: vec![Type::String, Type::String],
+                            args: vec![Type::String, Type::String].into(),
                             result: Box::new(Type::Bool),
                             aggregate: false,
                         },
@@ -280,7 +280,7 @@ impl Default for AnalysisOptions {
                     (
                         "NOW".to_owned(),
                         Type::App {
-                            args: vec![],
+                            args: vec![].into(),
                             result: Box::new(Type::String),
                             aggregate: false,
                         },
@@ -288,7 +288,7 @@ impl Default for AnalysisOptions {
                     (
                         "YEAR".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -296,7 +296,7 @@ impl Default for AnalysisOptions {
                     (
                         "MONTH".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -304,7 +304,7 @@ impl Default for AnalysisOptions {
                     (
                         "DAY".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -312,7 +312,7 @@ impl Default for AnalysisOptions {
                     (
                         "HOUR".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -320,7 +320,7 @@ impl Default for AnalysisOptions {
                     (
                         "MINUTE".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -328,7 +328,7 @@ impl Default for AnalysisOptions {
                     (
                         "SECOND".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -336,7 +336,7 @@ impl Default for AnalysisOptions {
                     (
                         "WEEKDAY".to_owned(),
                         Type::App {
-                            args: vec![Type::String],
+                            args: vec![Type::String].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -344,7 +344,7 @@ impl Default for AnalysisOptions {
                     (
                         "IF".to_owned(),
                         Type::App {
-                            args: vec![Type::Bool, Type::Unspecified, Type::Unspecified],
+                            args: vec![Type::Bool, Type::Unspecified, Type::Unspecified].into(),
                             result: Box::new(Type::Unspecified),
                             aggregate: false,
                         },
@@ -352,7 +352,10 @@ impl Default for AnalysisOptions {
                     (
                         "COUNT".to_owned(),
                         Type::App {
-                            args: vec![],
+                            args: FunArgs {
+                                values: vec![Type::Bool],
+                                needed: 0,
+                            },
                             result: Box::new(Type::Number),
                             aggregate: true,
                         },
@@ -360,7 +363,7 @@ impl Default for AnalysisOptions {
                     (
                         "SUM".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: true,
                         },
@@ -368,7 +371,7 @@ impl Default for AnalysisOptions {
                     (
                         "AVG".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: true,
                         },
@@ -376,7 +379,7 @@ impl Default for AnalysisOptions {
                     (
                         "MIN".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: true,
                         },
@@ -384,7 +387,7 @@ impl Default for AnalysisOptions {
                     (
                         "MAX".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: true,
                         },
@@ -392,7 +395,7 @@ impl Default for AnalysisOptions {
                     (
                         "MEDIAN".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: true,
                         },
@@ -400,7 +403,7 @@ impl Default for AnalysisOptions {
                     (
                         "STDDEV".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: true,
                         },
@@ -408,7 +411,7 @@ impl Default for AnalysisOptions {
                     (
                         "VARIANCE".to_owned(),
                         Type::App {
-                            args: vec![Type::Number],
+                            args: vec![Type::Number].into(),
                             result: Box::new(Type::Number),
                             aggregate: true,
                         },
@@ -416,7 +419,7 @@ impl Default for AnalysisOptions {
                     (
                         "UNIQUE".to_owned(),
                         Type::App {
-                            args: vec![Type::Unspecified],
+                            args: vec![Type::Unspecified].into(),
                             result: Box::new(Type::Unspecified),
                             aggregate: true,
                         },
@@ -774,10 +777,65 @@ impl<'a> Analysis<'a> {
         match &expr.value {
             Value::Id(id) if !self.options.default_scope.entries.contains_key(id) => Ok(()),
             Value::Access(access) => self.ensure_agg_param_is_source_bound(&access.target),
+            Value::Binary(binary) => self.ensure_agg_binary_op_is_source_bound(&expr.attrs, binary),
+            Value::Unary(unary) => self.ensure_agg_param_is_source_bound(&unary.expr),
+
             _ => Err(AnalysisError::ExpectSourceBoundProperty(
                 expr.attrs.pos.line,
                 expr.attrs.pos.col,
             )),
+        }
+    }
+
+    fn ensure_agg_binary_op_is_source_bound(
+        &mut self,
+        attrs: &Attrs,
+        binary: &Binary,
+    ) -> AnalysisResult<()> {
+        if !self.ensure_agg_binary_op_branch_is_source_bound(&binary.lhs)
+            && !self.ensure_agg_binary_op_branch_is_source_bound(&binary.rhs)
+        {
+            return Err(AnalysisError::ExpectSourceBoundProperty(
+                attrs.pos.line,
+                attrs.pos.col,
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn ensure_agg_binary_op_branch_is_source_bound(&mut self, expr: &Expr) -> bool {
+        match &expr.value {
+            Value::Id(id) => !self.options.default_scope.entries.contains_key(id),
+            Value::Array(exprs) => {
+                if exprs.is_empty() {
+                    return false;
+                }
+
+                exprs
+                    .iter()
+                    .all(|expr| self.ensure_agg_binary_op_branch_is_source_bound(expr))
+            }
+            Value::Record(fields) => {
+                if fields.is_empty() {
+                    return false;
+                }
+
+                fields
+                    .iter()
+                    .all(|field| self.ensure_agg_binary_op_branch_is_source_bound(&field.value))
+            }
+            Value::Access(access) => {
+                self.ensure_agg_binary_op_branch_is_source_bound(&access.target)
+            }
+
+            Value::Binary(binary) => self
+                .ensure_agg_binary_op_is_source_bound(&expr.attrs, binary)
+                .is_ok(),
+            Value::Unary(unary) => self.ensure_agg_binary_op_branch_is_source_bound(&unary.expr),
+            Value::Group(expr) => self.ensure_agg_binary_op_branch_is_source_bound(expr),
+
+            Value::Number(_) | Value::String(_) | Value::Bool(_) | Value::App(_) => false,
         }
     }
 
@@ -942,13 +1000,11 @@ impl<'a> Analysis<'a> {
                         aggregate,
                     } = tpe
                 {
-                    if args.len() != app.args.len() {
+                    if !args.match_arg_count(app.args.len()) {
                         return Err(AnalysisError::FunWrongArgumentCount(
                             expr.attrs.pos.line,
                             expr.attrs.pos.col,
                             app.func.clone(),
-                            args.len(),
-                            app.args.len(),
                         ));
                     }
 
@@ -960,7 +1016,7 @@ impl<'a> Analysis<'a> {
                         ));
                     }
 
-                    for (arg, tpe) in app.args.iter().zip(args.iter().cloned()) {
+                    for (arg, tpe) in app.args.iter().zip(args.values.iter().cloned()) {
                         self.analyze_expr(ctx, arg, tpe)?;
                     }
 
