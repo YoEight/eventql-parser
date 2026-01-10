@@ -71,7 +71,6 @@ pub enum ParserError {
     /// Expected a specific symbol but found something else.
     ///
     /// Fields: `(line, column, expected_symbol, found_token)`
-    /// ```
     #[error("{0}:{1}: expected {2} but got {3}")]
     ExpectedSymbol(u32, u32, Symbol, String),
 
