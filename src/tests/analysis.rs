@@ -1,4 +1,10 @@
-use crate::{parse_query, prelude::AnalysisOptions};
+use crate::{
+    Type,
+    lexer::tokenize,
+    parse_query,
+    parser::Parser,
+    prelude::{Analysis, AnalysisContext, AnalysisOptions},
+};
 
 #[test]
 fn test_infer_wrong_where_clause_1() {
@@ -105,4 +111,67 @@ fn test_analyze_agg_must_use_source_bound() {
 fn test_analyze_optional_param_func() {
     let query = parse_query(include_str!("./resources/optional_param_func.eql")).unwrap();
     insta::assert_yaml_snapshot!(query.run_static_analysis(&Default::default()));
+}
+
+#[test]
+fn test_typecheck_datetime_contravariance_1() {
+    let tokens = tokenize("e.time").unwrap();
+    let expr = Parser::new(tokens.as_slice()).parse_expr().unwrap();
+    let options = &AnalysisOptions::default();
+    let mut analysis = Analysis::new(&options);
+
+    analysis
+        .scope_mut()
+        .entries
+        .insert("e".to_string(), options.event_type_info.clone());
+
+    // `e.time` is a `Type::DateTime` but it will typecheck if a `Type::Date` is expected
+    insta::assert_yaml_snapshot!(analysis.analyze_expr(
+        &AnalysisContext::default(),
+        &expr,
+        Type::Date
+    ));
+}
+
+#[test]
+fn test_typecheck_datetime_contravariance_2() {
+    let tokens = tokenize("NOW()").unwrap();
+    let expr = Parser::new(tokens.as_slice()).parse_expr().unwrap();
+    let options = &AnalysisOptions::default();
+    let mut analysis = Analysis::new(&options);
+
+    // `NOW()` is a `Type::DateTime` but it will typecheck if a `Type::Time` is expected
+    insta::assert_yaml_snapshot!(analysis.analyze_expr(
+        &AnalysisContext::default(),
+        &expr,
+        Type::Time
+    ));
+}
+
+#[test]
+fn test_typecheck_datetime_contravariance_3() {
+    let tokens = tokenize("YEAR(NOW())").unwrap();
+    let expr = Parser::new(tokens.as_slice()).parse_expr().unwrap();
+    let options = &AnalysisOptions::default();
+    let mut analysis = Analysis::new(&options);
+
+    insta::assert_yaml_snapshot!(analysis.analyze_expr(
+        &AnalysisContext::default(),
+        &expr,
+        Type::Number
+    ));
+}
+
+#[test]
+fn test_typecheck_datetime_contravariance_4() {
+    let tokens = tokenize("HOUR(NOW())").unwrap();
+    let expr = Parser::new(tokens.as_slice()).parse_expr().unwrap();
+    let options = &AnalysisOptions::default();
+    let mut analysis = Analysis::new(&options);
+
+    insta::assert_yaml_snapshot!(analysis.analyze_expr(
+        &AnalysisContext::default(),
+        &expr,
+        Type::Number
+    ));
 }

@@ -1,0 +1,5 @@
+---
+source: src/tests/analysis.rs
+expression: "analysis.analyze_expr(&AnalysisContext::default(), &expr, Type::Number)"
+---
+Ok: Number

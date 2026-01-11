@@ -96,7 +96,7 @@ Ok:
         source: String
         specversion: String
         subject: Subject
-        time: String
+        time: DateTime
         traceparent: String
         tracestate: String
         type: String

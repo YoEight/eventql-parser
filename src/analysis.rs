@@ -281,14 +281,14 @@ impl Default for AnalysisOptions {
                         "NOW".to_owned(),
                         Type::App {
                             args: vec![].into(),
-                            result: Box::new(Type::String),
+                            result: Box::new(Type::DateTime),
                             aggregate: false,
                         },
                     ),
                     (
                         "YEAR".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Date].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -296,7 +296,7 @@ impl Default for AnalysisOptions {
                     (
                         "MONTH".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Date].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -304,7 +304,7 @@ impl Default for AnalysisOptions {
                     (
                         "DAY".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Date].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -312,7 +312,7 @@ impl Default for AnalysisOptions {
                     (
                         "HOUR".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Time].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -320,7 +320,7 @@ impl Default for AnalysisOptions {
                     (
                         "MINUTE".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Time].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -328,7 +328,7 @@ impl Default for AnalysisOptions {
                     (
                         "SECOND".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Time].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -336,7 +336,7 @@ impl Default for AnalysisOptions {
                     (
                         "WEEKDAY".to_owned(),
                         Type::App {
-                            args: vec![Type::String].into(),
+                            args: vec![Type::Date].into(),
                             result: Box::new(Type::Number),
                             aggregate: false,
                         },
@@ -429,7 +429,7 @@ impl Default for AnalysisOptions {
             event_type_info: Type::Record(BTreeMap::from([
                 ("specversion".to_owned(), Type::String),
                 ("id".to_owned(), Type::String),
-                ("time".to_owned(), Type::String),
+                ("time".to_owned(), Type::DateTime),
                 ("source".to_owned(), Type::String),
                 ("subject".to_owned(), Type::Subject),
                 ("type".to_owned(), Type::String),
@@ -500,24 +500,63 @@ struct CheckContext {
     use_source_based: bool,
 }
 
+/// Context for controlling analysis behavior.
+///
+/// This struct allows you to configure how expressions are analyzed,
+/// such as whether aggregate functions are allowed in the current context.
 #[derive(Default)]
-struct AnalysisContext {
-    allow_agg_func: bool,
+pub struct AnalysisContext {
+    /// Controls whether aggregate functions (like COUNT, SUM, AVG) are allowed
+    /// in the current analysis context.
+    ///
+    /// Set to `true` to allow aggregate functions, `false` to reject them.
+    /// Defaults to `false`.
+    pub allow_agg_func: bool,
 }
 
-struct Analysis<'a> {
+/// A type checker and static analyzer for EventQL expressions.
+///
+/// This struct maintains the analysis state including scopes and type information.
+/// It can be used to perform type checking on individual expressions or entire queries.
+pub struct Analysis<'a> {
+    /// The analysis options containing type information for functions and event types.
     options: &'a AnalysisOptions,
+    /// Stack of previous scopes for nested scope handling.
     prev_scopes: Vec<Scope>,
+    /// The current scope containing variable bindings and their types.
     scope: Scope,
 }
 
 impl<'a> Analysis<'a> {
-    fn new(options: &'a AnalysisOptions) -> Self {
+    /// Creates a new analysis instance with the given options.
+    pub fn new(options: &'a AnalysisOptions) -> Self {
         Self {
             options,
             prev_scopes: Default::default(),
             scope: Scope::default(),
         }
+    }
+
+    /// Returns a reference to the current scope.
+    ///
+    /// The scope contains variable bindings and their types for the current
+    /// analysis context. Note that this only includes local variable bindings
+    /// and does not include global definitions such as built-in functions
+    /// (e.g., `COUNT`, `NOW`) or event type information, which are stored
+    /// in the `AnalysisOptions`.
+    pub fn scope(&self) -> &Scope {
+        &self.scope
+    }
+
+    /// Returns a mutable reference to the current scope.
+    ///
+    /// This allows you to modify the scope by adding or removing variable bindings.
+    /// This is useful when you need to set up custom type environments before
+    /// analyzing expressions. Note that this only provides access to local variable
+    /// bindings; global definitions like built-in functions are managed through
+    /// `AnalysisOptions` and cannot be modified via the scope.
+    pub fn scope_mut(&mut self) -> &mut Scope {
+        &mut self.scope
     }
 
     fn enter_scope(&mut self) {
@@ -537,7 +576,35 @@ impl<'a> Analysis<'a> {
         }
     }
 
-    fn analyze_query(&mut self, query: Query<Raw>) -> AnalysisResult<Query<Typed>> {
+    /// Performs static analysis on a parsed query.
+    ///
+    /// This method analyzes an entire EventQL query, performing type checking on all
+    /// clauses including sources, predicates, group by, order by, and projections.
+    /// It returns a typed version of the query with type information attached.
+    ///
+    /// # Arguments
+    ///
+    /// * `query` - A parsed query in its raw (untyped) form
+    ///
+    /// # Returns
+    ///
+    /// Returns a typed query with all type information resolved, or an error if
+    /// type checking fails for any part of the query.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use eventql_parser::{parse_query, prelude::{Analysis, AnalysisOptions}};
+    ///
+    /// let query = parse_query("FROM e IN events WHERE [1,2,3] CONTAINS e.data.price PROJECT INTO e").unwrap();
+    ///
+    /// let options = AnalysisOptions::default();
+    /// let mut analysis = Analysis::new(&options);
+    ///
+    /// let typed_query = analysis.analyze_query(query);
+    /// assert!(typed_query.is_ok());
+    /// ```
+    pub fn analyze_query(&mut self, query: Query<Raw>) -> AnalysisResult<Query<Typed>> {
         self.enter_scope();
 
         let mut sources = Vec::with_capacity(query.sources.len());
@@ -892,7 +959,36 @@ impl<'a> Analysis<'a> {
         }
     }
 
-    fn analyze_expr(
+    /// Analyzes an expression and checks it against an expected type.
+    ///
+    /// This method performs type checking on an expression, verifying that all operations
+    /// are type-safe and that the expression's type is compatible with the expected type.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The analysis context controlling analysis behavior
+    /// * `expr` - The expression to analyze
+    /// * `expect` - The expected type of the expression
+    ///
+    /// # Returns
+    ///
+    /// Returns the actual type of the expression after checking compatibility with the expected type,
+    /// or an error if type checking fails.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use eventql_parser::prelude::{tokenize, Parser, Analysis, AnalysisContext, AnalysisOptions, Type};
+    ///
+    /// let tokens = tokenize("1 + 2").unwrap();
+    /// let expr = Parser::new(tokens.as_slice()).parse_expr().unwrap();
+    /// let options = AnalysisOptions::default();
+    /// let mut analysis = Analysis::new(&options);
+    ///
+    /// let result = analysis.analyze_expr(&AnalysisContext::default(), &expr, Type::Number);
+    /// assert!(result.is_ok());
+    /// ```
+    pub fn analyze_expr(
         &mut self,
         ctx: &AnalysisContext,
         expr: &Expr,
