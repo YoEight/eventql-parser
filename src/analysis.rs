@@ -576,6 +576,34 @@ impl<'a> Analysis<'a> {
         }
     }
 
+    /// Performs static analysis on a parsed query.
+    ///
+    /// This method analyzes an entire EventQL query, performing type checking on all
+    /// clauses including sources, predicates, group by, order by, and projections.
+    /// It returns a typed version of the query with type information attached.
+    ///
+    /// # Arguments
+    ///
+    /// * `query` - A parsed query in its raw (untyped) form
+    ///
+    /// # Returns
+    ///
+    /// Returns a typed query with all type information resolved, or an error if
+    /// type checking fails for any part of the query.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use eventql_parser::{parse_query, prelude::{Analysis, AnalysisOptions}};
+    ///
+    /// let query = parse_query("FROM e IN events WHERE [1,2,3] CONTAINS e.data.price PROJECT INTO e").unwrap();
+    ///
+    /// let options = AnalysisOptions::default();
+    /// let mut analysis = Analysis::new(&options);
+    ///
+    /// let typed_query = analysis.analyze_query(query);
+    /// assert!(typed_query.is_ok());
+    /// ```
     pub fn analyze_query(&mut self, query: Query<Raw>) -> AnalysisResult<Query<Typed>> {
         self.enter_scope();
 
