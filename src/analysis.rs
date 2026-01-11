@@ -537,10 +537,24 @@ impl<'a> Analysis<'a> {
         }
     }
 
+    /// Returns a reference to the current scope.
+    ///
+    /// The scope contains variable bindings and their types for the current
+    /// analysis context. Note that this only includes local variable bindings
+    /// and does not include global definitions such as built-in functions
+    /// (e.g., `COUNT`, `NOW`) or event type information, which are stored
+    /// in the `AnalysisOptions`.
     pub fn scope(&self) -> &Scope {
         &self.scope
     }
 
+    /// Returns a mutable reference to the current scope.
+    ///
+    /// This allows you to modify the scope by adding or removing variable bindings.
+    /// This is useful when you need to set up custom type environments before
+    /// analyzing expressions. Note that this only provides access to local variable
+    /// bindings; global definitions like built-in functions are managed through
+    /// `AnalysisOptions` and cannot be modified via the scope.
     pub fn scope_mut(&mut self) -> &mut Scope {
         &mut self.scope
     }
